@@ -296,9 +296,10 @@ q('submitBtn').addEventListener('click', function(){
     .then(function(res){
       btn.disabled = false; updateSubmitBtn();
       if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + res.error, 'err'); return; }
-      state.roster = res.roster;
       showMsg('', '');
       renderResult(res.results);
+      // 控えのLINE送信は結果表示をブロックしないよう、待たずに投げる
+      apiPost({ action:'notify', lineUserId: state.userId, idToken: state.idToken, results: res.results }).catch(function(){});
       startForm();
     })
     .catch(function(e){
