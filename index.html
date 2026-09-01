@@ -53,6 +53,26 @@
   .rgrp.w ol li{color:#a15b1e}
   .rgrp .none{list-style:none;margin-left:-22px;color:var(--sub);font-size:12.5px}
 
+  .gbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:16px}
+  .gbox-h{font-weight:700;font-size:15px}
+  .gbox-sub{font-size:12px;color:var(--sub);margin:4px 0 8px;line-height:1.55}
+  .grow{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-top:1px solid var(--line);font-size:13px}
+  .grow:first-of-type{border-top:0}
+  .grow .gcol{flex:1;min-width:0}
+  .grow .gnm{font-weight:600}
+  .grow .gmeta{font-size:11.5px;color:var(--sub);margin-top:2px}
+  .grow .gmeta.wait{color:var(--wl)}
+  .grow .grm{background:transparent;border:1px solid var(--line);border-radius:6px;width:24px;height:24px;color:var(--sub);font-size:14px;line-height:1;flex:none}
+  .gadd{background:transparent;border:1px dashed var(--line);border-radius:8px;padding:11px;font-size:13px;color:var(--sub);font-weight:700;width:100%;margin-top:8px}
+  .gform{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+  .gform input,.gform select{font-size:16px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);width:100%}
+  .gform .row{display:flex;gap:8px}
+  .gform .row .age{flex:1;min-width:0}
+  .gform .row .gen{width:108px;flex:none}
+  .gform-btns{display:flex;gap:8px}
+  .gform-btns button{flex:1;padding:11px;border-radius:8px;font-size:14px;font-weight:700;border:1px solid var(--line);background:#fff;color:var(--text)}
+  .gform-btns button.add{background:var(--accent);color:#fff;border-color:var(--accent)}
+
   .footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 14px;display:none}
   .footer .inner{max-width:560px;margin:0 auto}
   button.primary{width:100%;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:15px;font-size:16px;font-weight:700}
@@ -89,7 +109,7 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
 /* ============================================================
-   p.b.q 練習日 参加投票 ＋ 参加状況（1画面に統合）
+   p.b.q 練習日 参加投票 ＋ 参加状況 ＋ 友達紹介（1画面）
    フロント＝GitHub Pages / データ＝GAS API を fetch
    ============================================================ */
 var LIFF_ID = "2011314745-16BXRKX0";
@@ -97,13 +117,14 @@ var API     = "https://script.google.com/macros/s/AKfycbwFleZTrYMBT1ih-WcEpUvVc5
 var REFRESH_MS = 25000;
 
 var state = { userId:"", lineName:"", idToken:"",
-              practices:[], roster:[], mine:[], selected:{}, expanded:{}, hadEntries:false, busy:false, touched:false };
+              practices:[], roster:[], mine:[], myGuests:[],
+              selected:{}, guests:[], expanded:{}, guestForm:false,
+              hadEntries:false, busy:false, touched:false };
 var refreshTimer = null;
 
-/* 直近のデータをブラウザに残し、次回は待たずに即描画 → 裏で最新に差し替える */
 function saveSnapshot(){
   try{ localStorage.setItem('pbq_snap', JSON.stringify({
-    practices: state.practices, roster: state.roster, mine: state.mine, ts: Date.now()
+    practices: state.practices, roster: state.roster, mine: state.mine, myGuests: state.myGuests, ts: Date.now()
   })); }catch(e){}
 }
 function loadSnapshot(){
@@ -156,25 +177,33 @@ function boot(){
 function start(){
   q('head').innerHTML =
     '<h1>練習日の参加投票</h1>' +
-    '<p class="sub">行ける日を<b>すべて</b>選んで送信（複数選択可・名前入力なし）。満席の日はキャンセル待ちで登録され、空きが出たら先着順にLINEで通知します。<br>' +
-    '各日の<b>「参加者リスト」</b>をタップすると、確定メンバーとキャンセル待ちが見られます。</p>' +
+    '<p class="sub">行ける日を<b>すべて</b>選んで送信（複数選択可・名前入力なし）。満席の日はキャンセル待ちになり、空きが出たら先着順にLINEで通知します。<br>' +
+    '各日の<b>「参加者リスト」</b>で確定メンバーとキャンセル待ちが見られます。<b>友達を連れていく</b>ときは、いちばん下の欄から追加してください。</p>' +
     '<div class="who">あなた：<b>' + esc(state.lineName) + '</b> さん（LINEアカウントで自動判別）</div>' +
     '<div class="refline"><span class="live"><span class="dot" id="dot"></span><span id="fresh">読み込み中…</span></span>' +
     '<button id="refreshBtn">更新</button></div>';
   q('refreshBtn').addEventListener('click', function(){ silentRefresh(true); });
   document.addEventListener('visibilitychange', function(){ if (!document.hidden) silentRefresh(false); });
 
-  // キャッシュがあれば即描画（体感速度優先）→ その後 loadAll で最新に
   var snap = loadSnapshot();
   if (snap){
-    state.practices = snap.practices; state.roster = snap.roster; state.mine = snap.mine;
-    state.hadEntries = snap.mine.length > 0;
-    state.selected = {};
-    snap.mine.forEach(function(m){ state.selected[m.practiceId] = true; });
+    state.practices = snap.practices; state.roster = snap.roster;
+    state.mine = snap.mine || []; state.myGuests = snap.myGuests || [];
+    seedFromServer();
     render();
     var f = q('fresh'); if (f) f.textContent = '最新に更新中…';
   }
   loadAll();
+}
+
+function seedFromServer(){
+  state.hadEntries = (state.mine.length > 0) || (state.myGuests.length > 0);
+  if (state.touched) return;
+  state.selected = {};
+  state.mine.forEach(function(m){ state.selected[m.practiceId] = true; });
+  state.guests = state.myGuests.map(function(g){
+    return { name:g.name, age:g.age, gender:g.gender, practiceId:g.practiceId };
+  });
 }
 
 /* ---------------- データ取得 ---------------- */
@@ -182,12 +211,9 @@ function loadAll(){
   apiGet({ api:'bootstrap', userId: state.userId, idToken: state.idToken })
     .then(function(d){
       if (!d.ok){ if (handleAuthFail(d)) return; markLive(false); showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
-      state.practices = d.practices; state.roster = d.roster; state.mine = d.mine;
-      state.hadEntries = d.mine.length > 0;
-      if (!state.touched){         // ユーザーがまだ触っていなければ選択を最新の申込状況に合わせる
-        state.selected = {};
-        d.mine.forEach(function(m){ state.selected[m.practiceId] = true; });
-      }
+      state.practices = d.practices; state.roster = d.roster;
+      state.mine = d.mine || []; state.myGuests = d.myGuests || [];
+      seedFromServer();
       markLive(true);
       render();
       saveSnapshot();
@@ -196,9 +222,8 @@ function loadAll(){
     .catch(function(e){ markLive(false); showMsg('通信エラー: ' + e, 'err'); scheduleRefresh(); });
 }
 
-/* ロスター(人数・名簿)だけ更新。選択チェックと展開状態は保持 */
 function silentRefresh(manual){
-  if (state.busy) return;
+  if (state.busy || state.guestForm) return;
   apiGet({ api:'roster', idToken: state.idToken })
     .then(function(d){
       if (d && d.ok && d.roster){
@@ -216,7 +241,7 @@ function silentRefresh(manual){
 function scheduleRefresh(){
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(function(){
-    if (document.hidden || state.busy){ scheduleRefresh(); return; }
+    if (document.hidden || state.busy || state.guestForm){ scheduleRefresh(); return; }
     silentRefresh(false);
   }, REFRESH_MS);
 }
@@ -229,8 +254,16 @@ function markLive(ok){
 }
 
 /* ---------------- 描画 ---------------- */
+function pById(pid){ for (var i=0;i<state.practices.length;i++) if (state.practices[i].id===pid) return state.practices[i]; return null; }
 function rosterFor(pid){ for (var i=0;i<state.roster.length;i++) if (state.roster[i].id===pid) return state.roster[i]; return null; }
 function mineFor(pid){ for (var i=0;i<state.mine.length;i++) if (state.mine[i].practiceId===pid) return state.mine[i]; return null; }
+function guestStatusOf(g){
+  for (var i=0;i<state.myGuests.length;i++){
+    var m = state.myGuests[i];
+    if (m.practiceId===g.practiceId && m.name===g.name) return m;
+  }
+  return null;
+}
 
 function nameList(arr){
   if (!arr || !arr.length) return '<li class="none">まだいません</li>';
@@ -280,9 +313,50 @@ function render(){
       + '</div>'
       + '</div>';
   });
+
+  html += guestSectionHtml();
+
   q('root').innerHTML = html;
   q('footer').style.display = 'block';
   updateSubmitBtn();
+  if (state.guestForm){ var n = q('gf-name'); if (n) n.focus(); }
+}
+
+function guestSectionHtml(){
+  var h = '<div class="gbox"><div class="gbox-h">友達を連れていく</div>'
+    + '<p class="gbox-sub">友達の名前・年齢・性別と、参加する練習日を選んで追加します。'
+    + '複数日来るなら、日ごとに1回ずつ追加してください。会費とマナーは紹介者がフォローをお願いします。</p>';
+
+  state.guests.forEach(function(g, idx){
+    var p = pById(g.practiceId);
+    var dayLabel = p ? (p.date + (p.place ? '　' + p.place : '')) : g.practiceId;
+    var gs = guestStatusOf(g);
+    var st = !gs ? '未送信（送信で登録）'
+      : (gs.status === 'waitlist' ? 'キャンセル待ち ' + gs.waitlistPos + '番目' : '参加確定');
+    var wc = (gs && gs.status === 'waitlist') ? ' wait' : '';
+    h += '<div class="grow"><div class="gcol">'
+      +   '<div class="gnm">' + esc(g.name) + '（' + esc(g.age) + '）' + esc(g.gender) + '</div>'
+      +   '<div class="gmeta' + wc + '">' + esc(dayLabel) + ' — ' + st + '</div>'
+      + '</div><button class="grm" onclick="removeGuest(' + idx + ')">×</button></div>';
+  });
+
+  if (state.guestForm){
+    var opts = state.practices.map(function(p){
+      return '<option value="' + esc(p.id) + '">' + esc(p.date + (p.place ? '　' + p.place : '')) + '</option>';
+    }).join('');
+    h += '<div class="gform">'
+      + '<input id="gf-name" placeholder="友達の名前" autocomplete="off">'
+      + '<div class="row"><input id="gf-age" class="age" type="number" inputmode="numeric" placeholder="年齢">'
+      + '<select id="gf-gender" class="gen"><option>男性</option><option>女性</option><option>その他</option></select></div>'
+      + '<select id="gf-day">' + opts + '</select>'
+      + '<div class="gform-btns"><button class="add" onclick="addGuest()">追加する</button>'
+      + '<button onclick="closeGuestForm()">やめる</button></div>'
+      + '</div>';
+  } else {
+    h += '<button class="gadd" onclick="openGuestForm()">＋ 友達を追加</button>';
+  }
+  h += '</div>';
+  return h;
 }
 
 function toggleExpand(pid){
@@ -295,11 +369,40 @@ function toggleExpand(pid){
   }
 }
 
+/* 友達の追加・削除 */
+function openGuestForm(){ state.guestForm = true; render(); }
+function closeGuestForm(){ state.guestForm = false; showMsg('',''); render(); }
+function addGuest(){
+  var name = (q('gf-name').value || '').trim();
+  var age  = (q('gf-age').value || '').trim();
+  var gender = q('gf-gender').value;
+  var pid = q('gf-day').value;
+  if (!name){ showMsg('友達の名前を入力してください。', 'err'); return; }
+  if (!age){ showMsg('友達の年齢を入力してください（だいたいでOK）。', 'err'); return; }
+  if (!pid){ showMsg('参加する練習日を選んでください。', 'err'); return; }
+  if (state.guests.some(function(g){ return g.practiceId === pid && g.name === name; })){
+    showMsg('その練習日に同じ名前の友達がすでに登録されています。', 'err'); return;
+  }
+  state.guests.push({ name: name, age: age, gender: gender, practiceId: pid });
+  state.touched = true;
+  state.guestForm = false;
+  showMsg('', '');
+  render();
+}
+function removeGuest(idx){
+  state.guests.splice(idx, 1);
+  state.touched = true;
+  render();
+}
+
 function selectedCount(){ return Object.keys(state.selected).filter(function(k){ return state.selected[k]; }).length; }
 function updateSubmitBtn(){
   var btn = q('submitBtn');
-  if (selectedCount() === 0 && state.hadEntries){ btn.textContent = 'すべて取り消して送信'; btn.classList.add('warn'); }
-  else { btn.textContent = 'この内容で送信'; btn.classList.remove('warn'); }
+  if (selectedCount() === 0 && state.guests.length === 0 && state.hadEntries){
+    btn.textContent = 'すべて取り消して送信'; btn.classList.add('warn');
+  } else {
+    btn.textContent = 'この内容で送信'; btn.classList.remove('warn');
+  }
 }
 function toggle(pid){ state.touched = true; state.selected[pid] = !state.selected[pid]; render(); }
 
@@ -309,10 +412,10 @@ function renderResult(results){
   var cxl = results.filter(function(r){ return r.status==='cancelled'; });
   var h = '<div class="result"><h2>✅ 送信しました</h2>';
   if (ok.length)   h += '<div class="grp ok"><div class="t">参加確定</div><ul>' + ok.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul></div>';
-  if (wait.length) h += '<div class="grp wait"><div class="t">キャンセル待ち（定員オーバーのため）</div><ul>' + wait.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul><div class="note">空きが出た時点で、先着順にLINEで「参加できます」の通知が届きます。現時点ではこの日は参加できません。</div></div>';
+  if (wait.length) h += '<div class="grp wait"><div class="t">キャンセル待ち（定員オーバーのため）</div><ul>' + wait.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul><div class="note">空きが出た時点で、先着順にLINEで「参加できます」の通知が届きます。友達の分は紹介者に通知します。</div></div>';
   if (cxl.length)  h += '<div class="grp cxl"><div class="t">取り消し</div><ul>' + cxl.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul></div>';
-  if (!ok.length && !wait.length && !cxl.length) h += '<div class="note">日程が選択されていません（＝全日程キャンセル）。</div>';
-  h += '<div class="note">同じ内容をLINEのトークにも送りました。あとから見返せます。<br>予定が変わったら、選び直して再送信してください。</div></div>';
+  if (!ok.length && !wait.length && !cxl.length) h += '<div class="note">日程が選択されていません（＝すべて取り消し）。</div>';
+  h += '<div class="note">同じ内容をLINEのトークにも送りました。予定が変わったら、選び直して再送信してください。</div></div>';
   q('result').innerHTML = h;
   window.scrollTo(0,0);
 }
@@ -320,20 +423,22 @@ function renderResult(results){
 /* ---------------- 送信 ---------------- */
 q('submitBtn').addEventListener('click', function(){
   if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
+  if (state.guestForm){ showMsg('友達の入力を「追加する」か「やめる」で確定してから送信してください。', 'err'); return; }
   var ids = Object.keys(state.selected).filter(function(k){ return state.selected[k]; });
-  if (ids.length === 0 && state.hadEntries){
-    if (!window.confirm('現在の投票をすべて取り消します。よろしいですか？')) return;
+  if (ids.length === 0 && state.guests.length === 0 && state.hadEntries){
+    if (!window.confirm('あなたの参加と、連れていく友達の登録をすべて取り消します。よろしいですか？')) return;
   }
   var btn = q('submitBtn');
   btn.disabled = true; btn.textContent = '送信中…'; state.busy = true;
-  apiPost({ action:'submit', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken, practiceIds: ids })
+  apiPost({ action:'submit', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken,
+            practiceIds: ids, guests: state.guests })
     .then(function(res){
       state.busy = false; btn.disabled = false; updateSubmitBtn();
       if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + res.error, 'err'); return; }
       showMsg('', '');
       renderResult(res.results);
       apiPost({ action:'notify', lineUserId: state.userId, idToken: state.idToken, results: res.results }).catch(function(){});
-      state.touched = false;   // 送信で申込状況が確定 → 最新に合わせ直す
+      state.touched = false;
       loadAll();
     })
     .catch(function(e){
