@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>p.b.q 練習日</title>
+<link rel="preconnect" href="https://script.google.com" crossorigin>
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
+<link rel="dns-prefetch" href="https://api.line.me">
 <style>
   :root{--accent:#FF5A4E;--bg:#f5f5f7;--card:#fff;--line:#e6e6ea;--text:#1c1c1e;--sub:#8a8a8e;--wl:#c96a1b}
   *{box-sizing:border-box}
@@ -93,8 +97,22 @@ var API     = "https://script.google.com/macros/s/AKfycbwFleZTrYMBT1ih-WcEpUvVc5
 var REFRESH_MS = 25000;
 
 var state = { userId:"", lineName:"", idToken:"",
-              practices:[], roster:[], mine:[], selected:{}, expanded:{}, hadEntries:false, busy:false };
+              practices:[], roster:[], mine:[], selected:{}, expanded:{}, hadEntries:false, busy:false, touched:false };
 var refreshTimer = null;
+
+/* 直近のデータをブラウザに残し、次回は待たずに即描画 → 裏で最新に差し替える */
+function saveSnapshot(){
+  try{ localStorage.setItem('pbq_snap', JSON.stringify({
+    practices: state.practices, roster: state.roster, mine: state.mine, ts: Date.now()
+  })); }catch(e){}
+}
+function loadSnapshot(){
+  try{
+    var s = JSON.parse(localStorage.getItem('pbq_snap') || 'null');
+    if (s && s.practices && s.practices.length && (Date.now() - s.ts) < 20*60*1000) return s;
+  }catch(e){}
+  return null;
+}
 
 function q(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
@@ -145,6 +163,17 @@ function start(){
     '<button id="refreshBtn">更新</button></div>';
   q('refreshBtn').addEventListener('click', function(){ silentRefresh(true); });
   document.addEventListener('visibilitychange', function(){ if (!document.hidden) silentRefresh(false); });
+
+  // キャッシュがあれば即描画（体感速度優先）→ その後 loadAll で最新に
+  var snap = loadSnapshot();
+  if (snap){
+    state.practices = snap.practices; state.roster = snap.roster; state.mine = snap.mine;
+    state.hadEntries = snap.mine.length > 0;
+    state.selected = {};
+    snap.mine.forEach(function(m){ state.selected[m.practiceId] = true; });
+    render();
+    var f = q('fresh'); if (f) f.textContent = '最新に更新中…';
+  }
   loadAll();
 }
 
@@ -155,10 +184,13 @@ function loadAll(){
       if (!d.ok){ if (handleAuthFail(d)) return; markLive(false); showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
       state.practices = d.practices; state.roster = d.roster; state.mine = d.mine;
       state.hadEntries = d.mine.length > 0;
-      state.selected = {};
-      d.mine.forEach(function(m){ state.selected[m.practiceId] = true; });
+      if (!state.touched){         // ユーザーがまだ触っていなければ選択を最新の申込状況に合わせる
+        state.selected = {};
+        d.mine.forEach(function(m){ state.selected[m.practiceId] = true; });
+      }
       markLive(true);
       render();
+      saveSnapshot();
       scheduleRefresh();
     })
     .catch(function(e){ markLive(false); showMsg('通信エラー: ' + e, 'err'); scheduleRefresh(); });
@@ -174,6 +206,7 @@ function silentRefresh(manual){
         var y = window.scrollY;
         markLive(true); render();
         window.scrollTo(0, y);
+        saveSnapshot();
       } else { markLive(false); }
       if (!manual) scheduleRefresh();
     })
@@ -268,7 +301,7 @@ function updateSubmitBtn(){
   if (selectedCount() === 0 && state.hadEntries){ btn.textContent = 'すべて取り消して送信'; btn.classList.add('warn'); }
   else { btn.textContent = 'この内容で送信'; btn.classList.remove('warn'); }
 }
-function toggle(pid){ state.selected[pid] = !state.selected[pid]; render(); }
+function toggle(pid){ state.touched = true; state.selected[pid] = !state.selected[pid]; render(); }
 
 function renderResult(results){
   var ok = results.filter(function(r){ return r.status==='confirmed'; });
@@ -300,6 +333,7 @@ q('submitBtn').addEventListener('click', function(){
       showMsg('', '');
       renderResult(res.results);
       apiPost({ action:'notify', lineUserId: state.userId, idToken: state.idToken, results: res.results }).catch(function(){});
+      state.touched = false;   // 送信で申込状況が確定 → 最新に合わせ直す
       loadAll();
     })
     .catch(function(e){
