@@ -5,48 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>p.b.q 練習日</title>
 <style>
-  :root{--accent:#FF5A4E;--bg:#f5f5f7;--card:#fff;--line:#e6e6ea;--text:#1c1c1e;--sub:#8a8a8e}
+  :root{--accent:#FF5A4E;--bg:#f5f5f7;--card:#fff;--line:#e6e6ea;--text:#1c1c1e;--sub:#8a8a8e;--wl:#c96a1b}
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%}
   .wrap{max-width:560px;margin:0 auto;padding:18px 14px 130px}
   h1{font-size:19px;margin:4px 4px 2px}
-  .sub{color:var(--sub);font-size:13px;margin:0 4px 16px;line-height:1.55}
-  .hint{font-size:12px;color:var(--sub);margin:2px 4px 12px;line-height:1.5}
-  .who{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--sub)}
+  .sub{color:var(--sub);font-size:13px;margin:0 4px 12px;line-height:1.55}
+  .who{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:13px;color:var(--sub)}
   .who b{color:var(--text);font-size:15px}
-  .status{display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin:0 4px 16px}
-  .dot{width:7px;height:7px;border-radius:999px;background:#1a7f37;flex:none}
-  .dot.off{background:#c0392b}
-  .day{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer}
+  .refline{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 4px 14px;font-size:11.5px;color:var(--sub)}
+  .refline button{background:transparent;border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--text);font-weight:700}
+  .refline .live{display:flex;align-items:center;gap:5px}
+  .refline .dot{width:6px;height:6px;border-radius:50%;background:#1a7f37;flex:none}
+  .refline .dot.off{background:#c0392b}
+
+  .day{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
   .day.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(255,90,78,.14)}
-  .day input{margin-top:2px;width:22px;height:22px;accent-color:var(--accent);flex:none}
-  .day .body{flex:1;min-width:0}
-  .day .d{font-weight:700;font-size:15px;line-height:1.4}
-  .day .tp{font-size:13px;color:#3a3a3c;margin-top:3px}
-  .day .meta{font-size:12px;color:var(--sub);margin-top:6px}
+  .pick{display:flex;align-items:flex-start;gap:12px;padding:14px;cursor:pointer}
+  .pick input{margin-top:2px;width:22px;height:22px;accent-color:var(--accent);flex:none}
+  .pick .body{flex:1;min-width:0}
+  .pick .d{font-weight:700;font-size:15px;line-height:1.4}
+  .pick .tp{font-size:13px;color:#3a3a3c;margin-top:3px}
+  .pick .meta{font-size:12px;color:var(--sub);margin-top:6px}
   .bar{height:5px;background:#ececef;border-radius:999px;margin-top:8px;overflow:hidden}
   .bar>i{display:block;height:100%;background:var(--accent)}
   .badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;margin-top:8px}
   .b-open{background:#e7f6ec;color:#1a7f37}
   .b-full{background:#fdecea;color:#c0392b}
   .b-mine{background:#fff1e6;color:#c96a1b}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px;margin-bottom:12px}
-  .card .d{font-weight:700;font-size:15px;line-height:1.4}
-  .cnt{font-size:13px;color:var(--sub);margin-top:8px}
-  .cnt b{color:var(--text);font-size:15px}
-  .cnt.wl{margin-top:14px;color:#c96a1b}
-  .cbadge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#fdecea;color:#c0392b;margin-left:6px}
-  ol.names{margin:8px 0 0;padding-left:24px}
-  ol.names li{padding:3px 0;font-size:14px;line-height:1.45}
-  ol.names.wl li{color:#a15b1e}
-  li.none{list-style:none;margin-left:-24px;color:var(--sub);font-size:13px}
+
+  .rtoggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:#fafafa;border:0;border-top:1px solid var(--line);padding:11px 14px;font-size:12.5px;color:var(--sub);cursor:pointer;font-weight:700}
+  .day.sel .rtoggle{background:#fff7f5}
+  .rtoggle .arw{transition:transform .15s;font-size:10px}
+  .rtoggle[aria-expanded="true"] .arw{transform:rotate(180deg)}
+  .rpanel{padding:4px 14px 14px;border-top:1px solid var(--line)}
+  .rpanel[hidden]{display:none}
+  .rgrp{margin-top:10px}
+  .rgrp .rt{font-size:12px;font-weight:700;color:var(--sub)}
+  .rgrp.w .rt{color:var(--wl)}
+  .rgrp ol{margin:5px 0 0;padding-left:22px}
+  .rgrp ol li{font-size:13.5px;line-height:1.5;padding:1px 0}
+  .rgrp.w ol li{color:#a15b1e}
+  .rgrp .none{list-style:none;margin-left:-22px;color:var(--sub);font-size:12.5px}
+
   .footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 14px;display:none}
   .footer .inner{max-width:560px;margin:0 auto}
   button.primary{width:100%;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:15px;font-size:16px;font-weight:700}
   button.primary.warn{background:#c0392b}
   button.primary:disabled{opacity:.5}
-  button.ghost{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:14px;color:var(--text);width:100%}
+
   .result{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
   .result h2{font-size:16px;margin:0 0 4px}
   .result .grp{margin-top:12px}
@@ -60,7 +68,6 @@
   .msg{padding:13px 14px;border-radius:10px;margin-bottom:14px;font-size:14px;line-height:1.65;white-space:pre-wrap}
   .msg.err{background:#fdecea;color:#c0392b}
   .loading{text-align:center;color:var(--sub);padding:48px 0}
-  a.link{color:var(--accent);font-size:14px;display:inline-block;margin:10px 4px 0;text-decoration:none}
 </style>
 </head>
 <body>
@@ -69,7 +76,6 @@
   <div id="msg"></div>
   <div id="result"></div>
   <div id="root"><div class="loading">読み込み中…</div></div>
-  <div id="foot"></div>
 </div>
 
 <div class="footer" id="footer">
@@ -79,16 +85,16 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
 /* ============================================================
-   p.b.q 練習日 申込フロントエンド（静的ホスティング用）
-   - GitHub Pages 等に置いて LIFF のエンドポイントURLにする
-   - データは Google Apps Script のAPI(下のAPI)と fetch でやり取り
+   p.b.q 練習日 参加投票 ＋ 参加状況（1画面に統合）
+   フロント＝GitHub Pages / データ＝GAS API を fetch
    ============================================================ */
 var LIFF_ID = "2011314745-16BXRKX0";
 var API     = "https://script.google.com/macros/s/AKfycbwFleZTrYMBT1ih-WcEpUvVc59dq8e2Bz5M1iLdVBoBB84FP_P--JQm55u2wytCww5-Kg/exec";
+var REFRESH_MS = 25000;
 
-var state = { userId:"", lineName:"", idToken:"", view:"form",
-              practices:[], roster:[], mine:[], selected:{}, hadEntries:false };
-var listTimer = null;
+var state = { userId:"", lineName:"", idToken:"",
+              practices:[], roster:[], mine:[], selected:{}, expanded:{}, hadEntries:false, busy:false };
+var refreshTimer = null;
 
 function q(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
@@ -96,36 +102,16 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
 function showMsg(t,cls){ q('msg').innerHTML = t ? '<div class="msg '+(cls||'')+'">'+esc(t)+'</div>' : ''; if(t) window.scrollTo(0,0); }
 function two(n){ return ('0'+n).slice(-2); }
 
-function getView(){
-  try{
-    var s = new URLSearchParams(location.search);
-    if (s.get('view')) return s.get('view');
-    var st = s.get('liff.state');
-    if (st){
-      var raw = st.charAt(0)==='?' ? st.substring(1) : st;
-      var s2 = new URLSearchParams(raw);
-      if (s2.get('view')) return s2.get('view');
-    }
-  }catch(e){}
-  return 'form';
-}
-
 function apiGet(params){
   var qs = Object.keys(params).map(function(k){
     return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
   return fetch(API + '?' + qs, { method:'GET' }).then(function(r){ return r.json(); });
 }
 function apiPost(body){
-  return fetch(API, {
-    method:'POST',
-    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-    body: JSON.stringify(body)
-  }).then(function(r){ return r.json(); });
+  return fetch(API, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+    body: JSON.stringify(body) }).then(function(r){ return r.json(); });
 }
-function handleAuthFail(d){
-  if (d && d.relogin){ try{ liff.login(); }catch(e){} return true; }
-  return false;
-}
+function handleAuthFail(d){ if (d && d.relogin){ try{ liff.login(); }catch(e){} return true; } return false; }
 
 /* ---------------- 起動 ---------------- */
 function boot(){
@@ -142,42 +128,86 @@ function boot(){
       state.userId   = p.userId;
       state.lineName = p.displayName || "";
       try { state.idToken = liff.getIDToken() || ""; } catch(e){ state.idToken = ""; }
-      state.view = getView();
-      if (state.view === 'list') startList();
-      else startForm();
+      start();
     })
     .catch(function(e){
       showMsg('LINE初期化エラー: ' + (e && e.message ? e.message : e) + '\nLINEアプリ内から開き直してください。','err');
     });
 }
 
-/* ================= 申込フォーム ================= */
-function startForm(){
+function start(){
   q('head').innerHTML =
-    '<h1>練習日の申込</h1>' +
-    '<p class="sub">行ける日を<b>すべて</b>選んで送信してください（複数選択可）。名前の入力は不要です。<br>' +
-    '満席の日はキャンセル待ちで登録され、空きが出たら先着順にLINEで通知します。</p>' +
-    '<p class="hint">💡 <b>変更・キャンセル</b>は、このフォームをもう一度開いて、行く日にチェック／行けなくなった日のチェックを外して「送信」するだけ。今の申込状況は最初から反映されています。</p>' +
-    '<div class="who">申込者：<b>' + esc(state.lineName) + '</b> さん（LINEアカウントで自動判別）</div>';
+    '<h1>練習日の参加投票</h1>' +
+    '<p class="sub">行ける日を<b>すべて</b>選んで送信（複数選択可・名前入力なし）。満席の日はキャンセル待ちで登録され、空きが出たら先着順にLINEで通知します。<br>' +
+    '各日の<b>「参加者リスト」</b>をタップすると、確定メンバーとキャンセル待ちが見られます。</p>' +
+    '<div class="who">あなた：<b>' + esc(state.lineName) + '</b> さん（LINEアカウントで自動判別）</div>' +
+    '<div class="refline"><span class="live"><span class="dot" id="dot"></span><span id="fresh">読み込み中…</span></span>' +
+    '<button id="refreshBtn">更新</button></div>';
+  q('refreshBtn').addEventListener('click', function(){ silentRefresh(true); });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) silentRefresh(false); });
+  loadAll();
+}
 
+/* ---------------- データ取得 ---------------- */
+function loadAll(){
   apiGet({ api:'bootstrap', userId: state.userId, idToken: state.idToken })
     .then(function(d){
-      if (!d.ok){ if (handleAuthFail(d)) return; showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
+      if (!d.ok){ if (handleAuthFail(d)) return; markLive(false); showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
       state.practices = d.practices; state.roster = d.roster; state.mine = d.mine;
       state.hadEntries = d.mine.length > 0;
       state.selected = {};
       d.mine.forEach(function(m){ state.selected[m.practiceId] = true; });
-      renderForm();
+      markLive(true);
+      render();
+      scheduleRefresh();
     })
-    .catch(function(e){ showMsg('通信エラー: ' + e, 'err'); });
+    .catch(function(e){ markLive(false); showMsg('通信エラー: ' + e, 'err'); scheduleRefresh(); });
 }
 
+/* ロスター(人数・名簿)だけ更新。選択チェックと展開状態は保持 */
+function silentRefresh(manual){
+  if (state.busy) return;
+  apiGet({ api:'roster', idToken: state.idToken })
+    .then(function(d){
+      if (d && d.ok && d.roster){
+        state.roster = d.roster;
+        var y = window.scrollY;
+        markLive(true); render();
+        window.scrollTo(0, y);
+      } else { markLive(false); }
+      if (!manual) scheduleRefresh();
+    })
+    .catch(function(){ markLive(false); if (!manual) scheduleRefresh(); });
+  if (manual) scheduleRefresh();
+}
+function scheduleRefresh(){
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(function(){
+    if (document.hidden || state.busy){ scheduleRefresh(); return; }
+    silentRefresh(false);
+  }, REFRESH_MS);
+}
+function markLive(ok){
+  var dot = q('dot'); if (dot) dot.className = 'dot' + (ok ? '' : ' off');
+  var f = q('fresh'); if (!f) return;
+  var t = new Date();
+  f.textContent = (ok ? '自動更新中（約' + (REFRESH_MS/1000) + '秒）・' : '更新失敗・') +
+    two(t.getHours()) + ':' + two(t.getMinutes());
+}
+
+/* ---------------- 描画 ---------------- */
 function rosterFor(pid){ for (var i=0;i<state.roster.length;i++) if (state.roster[i].id===pid) return state.roster[i]; return null; }
 function mineFor(pid){ for (var i=0;i<state.mine.length;i++) if (state.mine[i].practiceId===pid) return state.mine[i]; return null; }
 
-function renderForm(){
+function nameList(arr){
+  if (!arr || !arr.length) return '<li class="none">まだいません</li>';
+  return arr.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('');
+}
+
+function render(){
   if (!state.practices.length){
     q('root').innerHTML = '<div class="msg err">現在、募集中の練習日がありません。</div>';
+    q('footer').style.display = 'none';
     return;
   }
   var html = '';
@@ -186,36 +216,59 @@ function renderForm(){
     var mine = mineFor(p.id);
     var conf = r.confirmed.length, cap = r.capacity, wait = r.waitlist.length;
     var sel = !!state.selected[p.id];
+    var open = !!state.expanded[p.id];
+
     var badge;
-    if (mine && mine.status === 'confirmed')      badge = '<span class="badge b-mine">申込済み・参加確定</span>';
+    if (mine && mine.status === 'confirmed')      badge = '<span class="badge b-mine">投票済み・参加確定</span>';
     else if (mine && mine.status === 'waitlist')  badge = '<span class="badge b-mine">キャンセル待ち ' + mine.waitlistPos + '番目</span>';
     else if (conf >= cap)                         badge = '<span class="badge b-full">満席（チェックでキャンセル待ちに登録）</span>';
     else                                          badge = '<span class="badge b-open">受付中・あと ' + (cap - conf) + ' 名</span>';
+
     var pct = Math.min(100, Math.round(conf / cap * 100));
     var tp = [p.time, p.place].filter(function(s){ return s; }).join(' ・ ');
-    html += '<div class="day ' + (sel ? 'sel' : '') + '" onclick="toggle(\'' + p.id + '\')">'
-      + '<input type="checkbox" ' + (sel ? 'checked' : '') + ' onclick="event.stopPropagation();toggle(\'' + p.id + '\')">'
-      + '<div class="body">'
-      +   '<div class="d">' + esc(p.date || p.label) + '</div>'
-      +   (tp ? '<div class="tp">' + esc(tp) + '</div>' : '')
-      +   '<div class="meta">参加確定 ' + conf + ' / ' + cap + ' 名' + (wait > 0 ? '　・　待ち ' + wait + ' 名' : '') + '</div>'
-      +   '<div class="bar"><i style="width:' + pct + '%"></i></div>'
-      +   '<div>' + badge + '</div>'
-      + '</div></div>';
+
+    html += '<div class="day ' + (sel ? 'sel' : '') + '">'
+      + '<div class="pick" onclick="toggle(\'' + p.id + '\')">'
+      +   '<input type="checkbox" ' + (sel ? 'checked' : '') + ' onclick="event.stopPropagation();toggle(\'' + p.id + '\')">'
+      +   '<div class="body">'
+      +     '<div class="d">' + esc(p.date || p.label) + '</div>'
+      +     (tp ? '<div class="tp">' + esc(tp) + '</div>' : '')
+      +     '<div class="meta">参加確定 ' + conf + ' / ' + cap + ' 名' + (wait > 0 ? '　・　待ち ' + wait + ' 名' : '') + '</div>'
+      +     '<div class="bar"><i style="width:' + pct + '%"></i></div>'
+      +     '<div>' + badge + '</div>'
+      +   '</div>'
+      + '</div>'
+      + '<button class="rtoggle" aria-expanded="' + (open ? 'true' : 'false') + '" onclick="toggleExpand(\'' + p.id + '\')">'
+      +   '<span>参加者リスト（確定 ' + conf + (wait > 0 ? ' ／ 待ち ' + wait : '') + '）</span><span class="arw">▼</span>'
+      + '</button>'
+      + '<div class="rpanel" id="rp-' + p.id + '" ' + (open ? '' : 'hidden') + '>'
+      +   '<div class="rgrp"><div class="rt">参加確定（' + conf + ' / ' + cap + '）</div><ol>' + nameList(r.confirmed) + '</ol></div>'
+      +   (wait > 0 ? '<div class="rgrp w"><div class="rt">キャンセル待ち（' + wait + '・先着順）</div><ol>' + r.waitlist.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol></div>' : '')
+      + '</div>'
+      + '</div>';
   });
   q('root').innerHTML = html;
-  q('foot').innerHTML = '<a class="link" href="' + esc(API) + '" style="display:none"></a>';
   q('footer').style.display = 'block';
   updateSubmitBtn();
+}
+
+function toggleExpand(pid){
+  state.expanded[pid] = !state.expanded[pid];
+  var panel = q('rp-' + pid);
+  if (panel){
+    panel.hidden = !state.expanded[pid];
+    var btn = panel.previousElementSibling;
+    if (btn) btn.setAttribute('aria-expanded', state.expanded[pid] ? 'true' : 'false');
+  }
 }
 
 function selectedCount(){ return Object.keys(state.selected).filter(function(k){ return state.selected[k]; }).length; }
 function updateSubmitBtn(){
   var btn = q('submitBtn');
-  if (selectedCount() === 0 && state.hadEntries){ btn.textContent = 'すべてキャンセルして送信'; btn.classList.add('warn'); }
+  if (selectedCount() === 0 && state.hadEntries){ btn.textContent = 'すべて取り消して送信'; btn.classList.add('warn'); }
   else { btn.textContent = 'この内容で送信'; btn.classList.remove('warn'); }
 }
-function toggle(pid){ state.selected[pid] = !state.selected[pid]; renderForm(); }
+function toggle(pid){ state.selected[pid] = !state.selected[pid]; render(); }
 
 function renderResult(results){
   var ok = results.filter(function(r){ return r.status==='confirmed'; });
@@ -231,79 +284,26 @@ function renderResult(results){
   window.scrollTo(0,0);
 }
 
-/* ================= 参加者一覧 ================= */
-function startList(){
-  q('head').innerHTML =
-    '<h1>練習日 参加者一覧</h1>' +
-    '<div class="status"><span class="dot" id="dot"></span><span id="updated">読み込み中…</span></div>';
-  q('footer').style.display = 'none';
-  q('foot').innerHTML = '<button class="ghost" id="reload">今すぐ更新</button>';
-  q('reload').addEventListener('click', function(){ loadRoster(false); });
-  document.addEventListener('visibilitychange', function(){ if (!document.hidden) loadRoster(true); });
-  loadRoster(false);
-}
-function loadRoster(silent){
-  if (!silent) q('root').innerHTML = '<div class="loading">読み込み中…</div>';
-  apiGet({ api:'roster', idToken: state.idToken })
-    .then(function(d){
-      if (!d.ok){ if (handleAuthFail(d)) return; markLive(false); q('root').innerHTML = '<div class="msg err">取得に失敗: ' + esc(d.error) + '</div>'; }
-      else { renderList(d.roster); markLive(true); }
-      scheduleList();
-    })
-    .catch(function(){ markLive(false); scheduleList(); });
-}
-function scheduleList(){
-  clearTimeout(listTimer);
-  listTimer = setTimeout(function(){ if (!document.hidden) loadRoster(true); else scheduleList(); }, 15000);
-}
-function markLive(okState){
-  var dot = q('dot'); if (dot) dot.className = 'dot' + (okState ? '' : ' off');
-  var u = q('updated'); if (!u) return;
-  var dt = new Date();
-  u.textContent = (okState ? '自動更新中（約15秒ごと）' : '更新に失敗') +
-    '　最終更新 ' + two(dt.getHours()) + ':' + two(dt.getMinutes()) + ':' + two(dt.getSeconds());
-}
-function renderList(roster){
-  if (!roster || !roster.length){ q('root').innerHTML = '<div class="msg err">募集中の練習日がありません。</div>'; return; }
-  var html = '';
-  roster.forEach(function(p){
-    var conf = p.confirmed.length, full = conf >= p.capacity;
-    var tp = [p.time, p.place].filter(function(s){ return s; }).join(' ・ ');
-    html += '<div class="card">';
-    html += '<div class="d">' + esc(p.date || p.label) + '</div>';
-    if (tp) html += '<div class="tp" style="font-size:13px;color:#3a3a3c;margin-top:3px">' + esc(tp) + '</div>';
-    html += '<div class="cnt">参加確定 <b>' + conf + '</b> / ' + p.capacity + ' 名' + (full ? '<span class="cbadge">満席</span>' : '') + '</div>';
-    html += '<ol class="names">' + (conf ? p.confirmed.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') : '<li class="none">まだいません</li>') + '</ol>';
-    if (p.waitlist.length){
-      html += '<div class="cnt wl">キャンセル待ち ' + p.waitlist.length + ' 名（先着順）</div>';
-      html += '<ol class="names wl">' + p.waitlist.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol>';
-    }
-    html += '</div>';
-  });
-  q('root').innerHTML = html;
-}
-
-/* ================= 送信ボタン ================= */
+/* ---------------- 送信 ---------------- */
 q('submitBtn').addEventListener('click', function(){
   if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
   var ids = Object.keys(state.selected).filter(function(k){ return state.selected[k]; });
   if (ids.length === 0 && state.hadEntries){
-    if (!window.confirm('現在の申込をすべてキャンセルします。よろしいですか？')) return;
+    if (!window.confirm('現在の投票をすべて取り消します。よろしいですか？')) return;
   }
   var btn = q('submitBtn');
-  btn.disabled = true; btn.textContent = '送信中…';
+  btn.disabled = true; btn.textContent = '送信中…'; state.busy = true;
   apiPost({ action:'submit', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken, practiceIds: ids })
     .then(function(res){
-      btn.disabled = false; updateSubmitBtn();
+      state.busy = false; btn.disabled = false; updateSubmitBtn();
       if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + res.error, 'err'); return; }
       showMsg('', '');
       renderResult(res.results);
-      // 控えのLINE送信は結果表示をブロックしないよう、待たずに投げる
       apiPost({ action:'notify', lineUserId: state.userId, idToken: state.idToken, results: res.results }).catch(function(){});
-      startForm();
+      loadAll();
     })
     .catch(function(e){
-      btn.disabled = false; updateSubmitBtn();
+      state.busy = false; btn.disabled = false; updateSubmitBtn();
       showMsg('送信に失敗しました（通信）: ' + e, 'err');
     });
 });
