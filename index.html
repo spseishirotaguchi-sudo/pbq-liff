@@ -127,12 +127,15 @@ var API     = "https://script.google.com/macros/s/AKfycbwFleZTrYMBT1ih-WcEpUvVc5
 var REFRESH_MS = 25000;
 
 var state = { userId:"", lineName:"", idToken:"",
-              practices:[], roster:[], mine:[], myGuests:[],
+              practices:[], roster:[], mine:[], myGuests:[], myTrials:[],
               selected:{}, guests:[], expanded:{}, guestForm:false,
               hadEntries:false, busy:false, touched:false,
-              isMember:false, isAdmin:false, adminView:false, people:[] };
+              isMember:false, isAdmin:false, adminView:false, people:[],
+              mode:"", trialDay:"", trialForm:false };
 var refreshTimer = null;
-function hasAdminParam(){ try{ return new URLSearchParams(location.search).get('admin') === '1'; }catch(e){ return false; } }
+function qparam(k){ try{ return new URLSearchParams(location.search).get(k) || ""; }catch(e){ return ""; } }
+function hasAdminParam(){ return qparam('admin') === '1'; }
+function isTrialMode(){ return qparam('mode') === 'trial'; }
 
 function saveSnapshot(){
   try{ localStorage.setItem('pbq_snap', JSON.stringify({
@@ -179,6 +182,7 @@ function boot(){
       state.userId   = p.userId;
       state.lineName = p.displayName || "";
       try { state.idToken = liff.getIDToken() || ""; } catch(e){ state.idToken = ""; }
+      if (isTrialMode()){ state.mode = 'trial'; state.trialDay = qparam('day'); }
       start();
     })
     .catch(function(e){
@@ -187,6 +191,14 @@ function boot(){
 }
 
 function renderHead_(){
+  if (state.mode === 'trial'){
+    q('head').innerHTML =
+      '<h1>体験の申し込み</h1>' +
+      '<p class="sub">はじめての方の体験参加の申し込みです。行きたい日を<b>1つ</b>選んで送信してください。'
+      + '体験枠には限りがあり、満席の日は選べません。送信すると当日の持ち物・流れをLINEにお送りします。</p>' +
+      '<div class="who">あなた：<b>' + esc(state.lineName) + '</b> さん（LINEアカウントで自動判別）</div>';
+    return;
+  }
   q('head').innerHTML =
     '<h1>練習日の参加投票</h1>' +
     '<p class="sub">行ける日を<b>すべて</b>選んで送信（複数選択可・名前入力なし）。満席の日はキャンセル待ちになり、空きが出たら先着順にLINEで通知します。<br>' +
@@ -205,7 +217,7 @@ function start(){
   if (snap){
     state.practices = snap.practices; state.roster = snap.roster;
     state.mine = snap.mine || []; state.myGuests = snap.myGuests || [];
-    seedFromServer();
+    if (state.mode !== 'trial') seedFromServer();
     render();
     var f = q('fresh'); if (f) f.textContent = '最新に更新中…';
   }
@@ -228,7 +240,7 @@ function loadAll(){
     .then(function(d){
       if (!d.ok){ if (handleAuthFail(d)) return; markLive(false); showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
       state.practices = d.practices; state.roster = d.roster;
-      state.mine = d.mine || []; state.myGuests = d.myGuests || [];
+      state.mine = d.mine || []; state.myGuests = d.myGuests || []; state.myTrials = d.myTrials || [];
       state.isMember = !!d.isMember; state.isAdmin = !!d.isAdmin;
       if (state.isAdmin && hasAdminParam() && !state.adminViewInit){ state.adminViewInit = true; state.adminView = true; loadAdmin(); }
       seedFromServer();
@@ -286,7 +298,8 @@ function renderAdmin(){
 }
 
 function silentRefresh(manual){
-  if (state.busy || state.guestForm) return;
+  if (state.busy || state.guestForm || state.trialForm) return;
+  if (state.mode === 'trial'){ if (!manual) scheduleRefresh(); return; }
   apiGet({ api:'roster', idToken: state.idToken })
     .then(function(d){
       if (d && d.ok && d.roster){
@@ -302,6 +315,7 @@ function silentRefresh(manual){
   if (manual) scheduleRefresh();
 }
 function scheduleRefresh(){
+  if (state.mode === 'trial') return;
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(function(){
     if (document.hidden || state.busy || state.guestForm){ scheduleRefresh(); return; }
@@ -335,6 +349,7 @@ function nameList(arr){
 
 function render(){
   if (state.adminView){ renderAdmin(); return; }
+  if (state.mode === 'trial'){ renderTrial(); return; }
   if (!state.practices.length){
     q('root').innerHTML = '<div class="msg err">現在、募集中の練習日がありません。</div>';
     q('footer').style.display = 'none';
@@ -486,6 +501,125 @@ function renderResult(results){
   h += '<div class="note">同じ内容をLINEのトークにも送りました。予定が変わったら、選び直して再送信してください。</div></div>';
   q('result').innerHTML = h;
   window.scrollTo(0,0);
+}
+
+/* ---------------- 体験申し込みモード ---------------- */
+function trialLeft(pid){
+  var r = rosterFor(pid), p = pById(pid);
+  if (!p) return 0;
+  var used = r ? (r.trials ? r.trials.length : 0) : 0;
+  return Math.max(0, (p.capTrial || 0) - used);
+}
+function myTrial(){ return (state.myTrials && state.myTrials[0]) || null; }
+
+function renderTrial(){
+  if (!state.practices.length){
+    q('root').innerHTML = '<div class="msg err">現在、募集中の練習日がありません。しばらくしてから開き直してください。</div>';
+    q('footer').style.display = 'none';
+    return;
+  }
+  var mt = myTrial();
+  var h = '';
+
+  if (mt && !state.trialForm){
+    var mp = pById(mt.practiceId);
+    var dl = mp ? (mp.date + '　' + mp.time + (mp.place ? '　' + mp.place : '')) : mt.practiceId;
+    h += '<div class="result"><h2>体験を申し込み済みです</h2>'
+      + '<div class="grp ok"><div class="t">' + esc(dl) + '</div>'
+      + '<ul><li>' + esc(mt.name) + '（' + esc(mt.age) + '）' + esc(mt.gender) + '</li></ul></div>'
+      + '<div class="note">当日の持ち物・流れはLINEのトークに送っています。</div>'
+      + '<div class="gform-btns" style="margin-top:12px">'
+      +   '<button class="add" onclick="openTrialForm()">日程・内容を変更</button>'
+      +   '<button onclick="cancelTrial()">申し込みを取り消す</button>'
+      + '</div></div>';
+    q('root').innerHTML = h;
+    q('footer').style.display = 'none';
+    return;
+  }
+
+  var preset = state.trialDay || (mt ? mt.practiceId : '');
+  var opts = state.practices.map(function(p){
+    var left = trialLeft(p.id);
+    var tp = [p.time, p.place].filter(function(s){return s;}).join(' ');
+    var lbl = p.date + (tp ? '　' + tp : '');
+    if (left <= 0) return '<option value="' + esc(p.id) + '" disabled>' + esc(lbl) + '（満席）</option>';
+    var selAttr = (p.id === preset) ? ' selected' : '';
+    return '<option value="' + esc(p.id) + '"' + selAttr + '>' + esc(lbl) + '（体験枠 残り' + left + '）</option>';
+  }).join('');
+
+  var nm = (mt && mt.name) || state.lineName || '';
+  var ag = (mt && mt.age) || '';
+  var gd = (mt && mt.gender) || '男性';
+  function genOpt(v){ return '<option' + (v===gd?' selected':'') + '>' + v + '</option>'; }
+
+  h += '<div class="gbox">'
+    + '<div class="gbox-h">' + (mt ? '体験の内容を変更' : '体験に申し込む') + '</div>'
+    + '<p class="gbox-sub">行きたい日を選び、お名前・年齢・性別を入力して送信してください。'
+    + '当日は開始時間までに体育館の正面入り口に集合、参加費は500円です。</p>'
+    + '<div class="gform">'
+    +   '<select id="tr-day">' + opts + '</select>'
+    +   '<input id="tr-name" placeholder="お名前" autocomplete="name" value="' + esc(nm) + '">'
+    +   '<div class="row"><input id="tr-age" class="age" type="number" inputmode="numeric" placeholder="年齢（だいたいでOK）" value="' + esc(ag) + '">'
+    +   '<select id="tr-gender" class="gen">' + genOpt('男性') + genOpt('女性') + genOpt('その他') + '</select></div>'
+    +   '<div class="gform-btns">'
+    +     '<button class="add" onclick="submitTrial()">' + (mt ? 'この内容で変更' : '体験を申し込む') + '</button>'
+    +     (mt ? '<button onclick="closeTrialForm()">やめる</button>' : '')
+    +   '</div>'
+    + '</div></div>';
+
+  q('root').innerHTML = h;
+  q('footer').style.display = 'none';
+}
+
+function openTrialForm(){ state.trialForm = true; showMsg('',''); render(); }
+function closeTrialForm(){ state.trialForm = false; showMsg('',''); render(); }
+
+function submitTrial(){
+  if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
+  var pid = q('tr-day') ? q('tr-day').value : '';
+  var name = (q('tr-name') && q('tr-name').value || '').trim();
+  var age = (q('tr-age') && q('tr-age').value || '').trim();
+  var gender = q('tr-gender') ? q('tr-gender').value : '';
+  if (!pid){ showMsg('体験に行きたい日を選んでください（満席の日は選べません）。','err'); return; }
+  if (!name){ showMsg('お名前を入力してください。','err'); return; }
+  if (!age){ showMsg('年齢を入力してください（だいたいでOK）。','err'); return; }
+  var btns = document.querySelectorAll('.gform-btns button');
+  for (var i=0;i<btns.length;i++){ btns[i].disabled = true; }
+  showMsg('送信中…','');
+  state.busy = true;
+  apiPost({ action:'submit_trial', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken,
+            practiceId: pid, name: name, age: age, gender: gender })
+    .then(function(res){
+      state.busy = false;
+      if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + (res.error||''),'err'); render(); return; }
+      if (res.full){ showMsg('その日は体験枠が満席です。別の日を選んでください。','err'); state.trialForm = true; loadAll(); return; }
+      state.trialForm = false;
+      showMsg('','');
+      q('result').innerHTML = '<div class="result"><h2>✅ 体験を申し込みました</h2>'
+        + '<div class="note">当日の持ち物・流れ・集合場所を、LINEのトークにお送りしました。ご確認ください。'
+        + '予定が変わったら、このページから変更・取り消しができます。</div></div>';
+      window.scrollTo(0,0);
+      loadAll();
+    })
+    .catch(function(e){ state.busy = false; showMsg('送信に失敗しました（通信）: ' + e,'err'); render(); });
+}
+
+function cancelTrial(){
+  var mt = myTrial();
+  if (!mt) return;
+  if (!window.confirm('体験の申し込みを取り消します。よろしいですか？')) return;
+  state.busy = true;
+  apiPost({ action:'submit_trial', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken,
+            practiceId: mt.practiceId, cancel: true })
+    .then(function(res){
+      state.busy = false;
+      if (!res.ok){ if (handleAuthFail(res)) return; showMsg('取り消しに失敗しました: ' + (res.error||''),'err'); return; }
+      showMsg('','');
+      q('result').innerHTML = '<div class="result"><h2>取り消しました</h2><div class="note">またいつでもお申し込みいただけます。</div></div>';
+      window.scrollTo(0,0);
+      loadAll();
+    })
+    .catch(function(e){ state.busy = false; showMsg('取り消しに失敗しました（通信）: ' + e,'err'); });
 }
 
 /* ---------------- 送信 ---------------- */
