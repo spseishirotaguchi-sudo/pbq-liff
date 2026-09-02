@@ -21,24 +21,33 @@
   }
   .wrap{max-width:620px;margin:0 auto;padding:0 16px 72px}
 
-  header{text-align:center;padding:34px 0 10px}
+  header{text-align:center;padding:34px 0 6px}
   header img{width:76px;height:76px;border-radius:50%;border:1px solid var(--line);object-fit:cover}
   header .kicker{font-family:"Saira Condensed",sans-serif;font-weight:700;letter-spacing:.22em;text-transform:uppercase;font-size:12px;color:var(--brick);margin:14px 0 2px}
   header h1{font-weight:900;font-size:26px;margin:0;letter-spacing:.02em}
   header p{color:var(--sub);font-size:13px;margin:8px 0 0}
 
-  .sec{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;margin-top:16px;box-shadow:0 1px 2px rgba(20,20,40,.04)}
-  .sec h2{
-    font-weight:900;font-size:17px;margin:0 0 10px;color:var(--navy);
-    display:flex;align-items:center;gap:9px;
+  .tabs{display:flex;gap:6px;margin-top:20px;position:sticky;top:0;background:var(--paper);padding:10px 0;z-index:5}
+  .tabs a{
+    flex:1;text-align:center;text-decoration:none;font-weight:700;font-size:13px;
+    color:var(--navy);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 4px;
   }
-  .sec h2 .no{
-    font-family:"Saira Condensed",sans-serif;font-weight:700;font-size:13px;color:#fff;background:var(--navy);
-    min-width:24px;height:24px;padding:0 5px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;flex:none;
+  .tabs a.brick{color:var(--brick)}
+
+  .group-h{
+    font-family:"Saira Condensed",sans-serif;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+    font-size:12px;color:var(--sub);margin:26px 4px 2px;
+  }
+  .group-t{font-weight:900;font-size:19px;color:var(--navy);margin:0 4px 4px}
+  .group-lead{font-size:13px;color:var(--sub);margin:0 4px 4px;line-height:1.7}
+
+  .sec{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;margin-top:14px;box-shadow:0 1px 2px rgba(20,20,40,.04)}
+  .sec h2{
+    font-weight:900;font-size:16px;margin:0 0 10px;color:var(--navy);
+    display:flex;align-items:center;gap:9px;
   }
   .sec.danger{border-color:#e7b7b0}
   .sec.danger h2{color:var(--brick)}
-  .sec.danger h2 .no{background:var(--brick)}
 
   ul{margin:0;padding:0;list-style:none}
   li{position:relative;padding:7px 0 7px 20px;font-size:14.5px;border-top:1px dashed var(--line)}
@@ -49,13 +58,23 @@
   .hl{color:var(--brick);font-weight:700}
   .pill{display:inline-block;background:#eef0f7;color:var(--navy);font-weight:700;font-size:12px;padding:1px 8px;border-radius:999px;margin:0 2px}
 
-  .note{font-size:12.5px;color:var(--sub);margin-top:10px;line-height:1.7}
+  .steps{margin:0;padding:0;counter-reset:s;list-style:none}
+  .steps li{padding:8px 0 8px 30px;border-top:1px dashed var(--line)}
+  .steps li:first-child{border-top:0}
+  .steps li::before{
+    counter-increment:s;content:counter(s);
+    left:0;top:9px;width:20px;height:20px;border-radius:6px;background:var(--navy);color:#fff;
+    font-family:"Saira Condensed",sans-serif;font-weight:700;font-size:12px;
+    display:flex;align-items:center;justify-content:center;
+  }
 
   .fee{display:flex;align-items:baseline;gap:8px;margin:2px 0 10px}
   .fee .amt{font-family:"Saira Condensed",sans-serif;font-weight:700;font-size:40px;color:var(--brick);line-height:1}
   .fee .u{font-size:14px;font-weight:700}
 
-  footer{text-align:center;color:var(--sub);font-size:12px;margin-top:28px;line-height:1.9}
+  .note{font-size:12.5px;color:var(--sub);margin-top:10px;line-height:1.7}
+
+  footer{text-align:center;color:var(--sub);font-size:12px;margin-top:32px;line-height:1.9}
   footer .line{width:40px;height:2px;background:var(--brick);margin:0 auto 14px}
 </style>
 </head>
@@ -68,29 +87,29 @@
     <p>参加する前に、ひととおり目を通してください。</p>
   </header>
 
-  <section class="sec">
-    <h2><span class="no">1</span>参加の前に（参加投票）</h2>
-    <ul>
-      <li>練習に参加するときは、事前に「参加投票」で行ける日にチェックをお願いします。</li>
-      <li>定員に達した日は、自動でキャンセル待ちになります。キャンセル待ちの間はまだ参加できないので、通知をお待ちください。</li>
-      <li>キャンセルが出て枠が空いたら、LINEで通知が届きます。そのあとで参加してくださいね。</li>
-      <li>投票したあとに行けなくなったら、直前でも大丈夫なので投票を外してください（個別の連絡はいりません）。次の人に枠を回せます。</li>
-      <li>遅刻・早退はOKです（参加費は変わりません）。</li>
-    </ul>
-  </section>
+  <nav class="tabs">
+    <a href="#common">共通ルール</a>
+    <a href="#trial" class="brick">体験の方へ</a>
+    <a href="#member">メンバーの方へ</a>
+  </nav>
+
+  <!-- ============ 共通ルール ============ -->
+  <div class="group-h" id="common">For everyone</div>
+  <div class="group-t">共通ルール</div>
+  <div class="group-lead">体験の方もメンバーも、ここは共通です。</div>
 
   <section class="sec">
-    <h2><span class="no">2</span>参加費</h2>
+    <h2>参加費</h2>
     <div class="fee"><span class="amt">¥500</span><span class="u">／ 1回</span></div>
     <ul>
-      <li>参加したときに、その都度お支払いをお願いします。</li>
-      <li>支払いは <span class="pill">現金</span> または <span class="pill">PayPay</span>。PayPayは当日、その場でQRコードを読み取っていただきます。</li>
-      <li><span class="hl">未払いが2回たまった場合は、退会とさせていただきます。</span></li>
+      <li>参加したときに、その都度お支払いをお願いします（当日、体育館前で集金します）。</li>
+      <li>支払いは <span class="pill">現金</span> または <span class="pill">PayPay</span>。PayPayはその場でQRコードを読み取っていただきます。</li>
+      <li>キャンセル料はありません。行けなくなっても費用はかかりません。</li>
     </ul>
   </section>
 
   <section class="sec">
-    <h2><span class="no">3</span>プレー・マナー</h2>
+    <h2>プレー・マナー</h2>
     <ul>
       <li>自分だけでなく、その場のみんなが楽しめるプレーを心がけてもらえると嬉しいです。</li>
       <li>一緒にプレーする人への思いやりを大切にしてください。</li>
@@ -100,28 +119,29 @@
     </ul>
   </section>
 
+  <section class="sec">
+    <h2>写真・動画の掲載</h2>
+    <ul>
+      <li>練習中の写真・動画を Instagram などに掲載することがあります。</li>
+      <li>掲載NGの方の参加はお断りしています。</li>
+      <li>撮影した素材はメンバー用メニューの「写真・動画」から見られます。</li>
+    </ul>
+  </section>
+
   <section class="sec danger">
-    <h2><span class="no">4</span>禁止事項 — 当てはまる場合は退会となります</h2>
+    <h2>お断りしていること</h2>
     <ul>
       <li>悪質なビジネス勧誘・マルチ商法などの勧誘。</li>
-      <li>メンバーに大きな迷惑をかけたり、傷つける言動。</li>
-      <li>暴力・暴言・ハラスメント。</li>
+      <li>他の人に大きな迷惑をかけたり、傷つける言動。暴力・暴言・ハラスメント。</li>
       <li>出会い目的・ナンパ目的での参加。</li>
+      <li>参加費の未払いが2回たまった場合。</li>
       <li>そのほか、代表がチームに不適切と判断した行為。</li>
     </ul>
+    <p class="note">当てはまる場合は、体験の方はお断り、メンバーは退会とさせていただきます。</p>
   </section>
 
   <section class="sec">
-    <h2><span class="no">5</span>友達の紹介</h2>
-    <ul>
-      <li>友達を連れてくるときも、事前に「参加投票」から登録をお願いします（人数を把握するため）。</li>
-      <li>登録のときに、友達の「名前・年齢・性別」を入力します。</li>
-      <li>連れてきた友達の参加費とマナーは、紹介した人がフォローをお願いします。</li>
-    </ul>
-  </section>
-
-  <section class="sec">
-    <h2><span class="no">6</span>免責事項</h2>
+    <h2>免責事項</h2>
     <ul>
       <li>怪我や事故について、p.b.q は責任を負いかねます。各自で十分に気をつけて、心配な方はスポーツ保険などへの加入をおすすめします。</li>
       <li>練習時間外のトラブルについては、責任を負いかねます。</li>
@@ -129,16 +149,88 @@
     </ul>
   </section>
 
+  <!-- ============ 体験の方へ ============ -->
+  <div class="group-h" id="trial">First time</div>
+  <div class="group-t">体験の方へ</div>
+  <div class="group-lead">はじめて参加する方は、こちらを読んでから申し込んでください。</div>
+
   <section class="sec">
-    <h2><span class="no">7</span>連絡・お知らせ</h2>
+    <h2>申し込み方法</h2>
     <ul>
-      <li>質問や「友達を連れて行きたい」などの相談は、このLINEのトークに送ってください。</li>
-      <li>練習中の写真・動画を Instagram などに掲載することがあります。掲載NGの方の参加はお断りしています。</li>
+      <li>メニューの「体験に申し込む」から、行きたい日を1つ選んで、名前・年齢・性別を入力してください。</li>
+      <li>体験枠には各日 <b>限りがあります</b>。満席の日は選べません（キャンセル待ちはありません）。</li>
+      <li>送信すると、当日の集合場所・持ち物・流れをLINEのトークにお送りします。</li>
+      <li>予定が変わったら、同じ画面から早めに取り消しをお願いします。</li>
     </ul>
   </section>
 
   <section class="sec">
-    <h2><span class="no">8</span>いちばん大事なこと</h2>
+    <h2>当日の流れ</h2>
+    <ul class="steps">
+      <li>開始時間までに体育館の正面入り口に集合（遅れる場合は直前でも大丈夫。ひと言メッセージください）。</li>
+      <li>30分間フリーシューティング。</li>
+      <li>体育館の中央に集まってあいさつ。</li>
+      <li>少しみんなで練習（ない日もあります）。</li>
+      <li>チーム分けして試合開始。</li>
+      <li>終了10分前から片付け。</li>
+      <li>体育館前・施設前で参加費のお支払い＆あいさつ。</li>
+      <li>解散。</li>
+    </ul>
+  </section>
+
+  <section class="sec">
+    <h2>持ち物</h2>
+    <ul>
+      <li><b>必須</b>：参加費500円／バッシュ／運動できる服装／着替え／飲み物</li>
+      <li><b>任意</b>：バスケットボール（フリーシューティングでご自身が使う用）。市営体育館は有料レンタルあり、学校体育館は貸出なし。</li>
+    </ul>
+  </section>
+
+  <section class="sec">
+    <h2>体験のあと</h2>
+    <ul>
+      <li>続けて参加したいと思ってもらえたら、運営がメンバー登録します（こちらから声をかけます）。</li>
+      <li>メンバーになると、メニューが「参加投票」に変わり、毎回の練習に投票できるようになります。</li>
+    </ul>
+  </section>
+
+  <!-- ============ メンバーの方へ ============ -->
+  <div class="group-h" id="member">Members</div>
+  <div class="group-t">メンバーの方へ</div>
+  <div class="group-lead">メンバー登録が済んでいる方向けです。</div>
+
+  <section class="sec">
+    <h2>参加投票</h2>
+    <ul>
+      <li>練習に参加するときは、メニューの「参加投票」で行ける日にチェックをお願いします（複数選択OK・名前入力なし）。</li>
+      <li>定員に達した日は、自動でキャンセル待ちになります。キャンセル待ちの間はまだ参加できないので、通知をお待ちください。</li>
+      <li>枠が空いたらLINEで通知が届きます。そのあとで参加してくださいね。</li>
+      <li>投票したあとに行けなくなったら、直前でも大丈夫なので投票を外してください（個別の連絡はいりません）。次の人に枠を回せます。</li>
+      <li>遅刻・早退はOKです（参加費は変わりません）。</li>
+      <li>練習の前日20時ごろに、参加確定した日のリマインドがLINEに届きます。</li>
+    </ul>
+  </section>
+
+  <section class="sec">
+    <h2>友達を連れていく</h2>
+    <ul>
+      <li>「参加投票」の画面いちばん下の「友達を追加」から、事前に登録をお願いします（人数把握のため）。</li>
+      <li>友達の「名前・年齢・性別」と、参加する練習日を入力します。複数日来るなら日ごとに1回ずつ追加してください。</li>
+      <li>友達は <b>体験枠</b> での参加になります（各日わずか・キャンセル待ちなし）。満席のときは登録できません。</li>
+      <li>連れてきた友達の参加費とマナーは、紹介した人がフォローをお願いします。</li>
+    </ul>
+  </section>
+
+  <section class="sec">
+    <h2>連絡・相談</h2>
+    <ul>
+      <li>質問や相談は、このLINEのトークにそのまま送ってください。</li>
+      <li>撮影した写真・動画は、メニューの「写真・動画」から見られます。</li>
+    </ul>
+  </section>
+
+  <section class="sec">
+    <h2>いちばん大事なこと</h2>
     <ul>
       <li>参加者みんなで「一緒に楽しもう」という気持ちが、何より大事だと思っています。</li>
       <li>周りの人と仲良くなって、楽しくバスケしていきましょう。🔥</li>
@@ -148,7 +240,7 @@
   <footer>
     <div class="line"></div>
     p.b.q（Fukuoka Basketball Community）<br>
-    最終更新：2026年8月
+    最終更新：2026年9月
   </footer>
 </div>
 </body>
