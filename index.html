@@ -357,9 +357,10 @@ function render(){
   }
   var html = '';
   state.practices.forEach(function(p){
-    var r = rosterFor(p.id) || { confirmed:[], waitlist:[], capacity:p.capacity };
+    var r = rosterFor(p.id) || { confirmed:[], waitlist:[], trials:[], capacity:p.capacity };
     var mine = mineFor(p.id);
     var conf = r.confirmed.length, cap = r.capacity, wait = r.waitlist.length;
+    var trials = (r.trials || []), tn = trials.length;
     var sel = !!state.selected[p.id];
     var open = !!state.expanded[p.id];
 
@@ -378,17 +379,18 @@ function render(){
       +   '<div class="body">'
       +     '<div class="d">' + esc(p.date || p.label) + '</div>'
       +     (tp ? '<div class="tp">' + esc(tp) + '</div>' : '')
-      +     '<div class="meta">参加確定 ' + conf + ' / ' + cap + ' 名' + (wait > 0 ? '　・　待ち ' + wait + ' 名' : '') + '</div>'
+      +     '<div class="meta">参加確定 ' + conf + ' / ' + cap + ' 名' + (wait > 0 ? '　・　待ち ' + wait + ' 名' : '') + (tn > 0 ? '　・　体験 ' + tn + ' 名' : '') + '</div>'
       +     '<div class="bar"><i style="width:' + pct + '%"></i></div>'
       +     '<div>' + badge + '</div>'
       +   '</div>'
       + '</div>'
       + '<button class="rtoggle" aria-expanded="' + (open ? 'true' : 'false') + '" onclick="toggleExpand(\'' + p.id + '\')">'
-      +   '<span>参加者リスト（確定 ' + conf + (wait > 0 ? ' ／ 待ち ' + wait : '') + '）</span><span class="arw">▼</span>'
+      +   '<span>参加者リスト（確定 ' + conf + (wait > 0 ? ' ／ 待ち ' + wait : '') + (tn > 0 ? ' ／ 体験 ' + tn : '') + '）</span><span class="arw">▼</span>'
       + '</button>'
       + '<div class="rpanel" id="rp-' + p.id + '" ' + (open ? '' : 'hidden') + '>'
       +   '<div class="rgrp"><div class="rt">参加確定（' + conf + ' / ' + cap + '）</div><ol>' + nameList(r.confirmed) + '</ol></div>'
       +   (wait > 0 ? '<div class="rgrp w"><div class="rt">キャンセル待ち（' + wait + '・先着順）</div><ol>' + r.waitlist.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol></div>' : '')
+      +   (tn > 0 ? '<div class="rgrp"><div class="rt">体験・友達（' + tn + ' / ' + (p.capTrial || 0) + '）</div><ol>' + trials.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol></div>' : '')
       + '</div>'
       + '</div>';
   });
