@@ -132,6 +132,7 @@ var state = { userId:"", lineName:"", idToken:"",
               selected:{}, guests:[], expanded:{}, guestForm:false,
               hadEntries:false, busy:false, touched:false,
               isMember:false, isAdmin:false, adminView:false, people:[],
+              monthlyLimit:4, canVote:true, myRemaining:{},
               mode:"", trialDay:"", trialForm:false };
 var refreshTimer = null;
 function qparam(k){ try{ return new URLSearchParams(location.search).get(k) || ""; }catch(e){ return ""; } }
@@ -203,7 +204,8 @@ function renderHead_(){
   q('head').innerHTML =
     '<h1>練習日の参加投票</h1>' +
     '<p class="sub">行ける日を<b>すべて</b>選んで送信（複数選択可・名前入力なし）。満席の日はキャンセル待ちになり、空きが出たら先着順にLINEで通知します。<br>' +
-    '各日の<b>「参加者リスト」</b>で確定メンバーとキャンセル待ちが見られます。<b>友達を連れていく</b>ときは、いちばん下の欄から追加してください。</p>' +
+    '各日の<b>「参加者リスト」</b>で確定メンバーとキャンセル待ちが見られます。</p>' +
+    '<p class="lead" id="limit-lead"></p>' +
     '<div class="who">あなた：<b>' + esc(state.lineName) + '</b> さん（LINEアカウントで自動判別）</div>' +
     '<div class="refline"><span class="live"><span class="dot" id="dot"></span><span id="fresh">読み込み中…</span></span>' +
     '<button id="refreshBtn">更新</button></div>';
@@ -243,6 +245,9 @@ function loadAll(){
       state.practices = d.practices; state.roster = d.roster;
       state.mine = d.mine || []; state.myGuests = d.myGuests || []; state.myTrials = d.myTrials || [];
       state.isMember = !!d.isMember; state.isAdmin = !!d.isAdmin;
+      state.monthlyLimit = Number(d.monthlyLimit) > 0 ? Number(d.monthlyLimit) : 4;
+      state.canVote = d.canVote !== false;
+      state.myRemaining = d.myRemaining || {};
       if (state.isAdmin && hasAdminParam() && !state.adminViewInit){ state.adminViewInit = true; state.adminView = true; loadAdmin(); }
       seedFromServer();
       markLive(true);
@@ -265,6 +270,17 @@ function loadAdmin(){
     })
     .catch(function(e){ showMsg('通信エラー: ' + e, 'err'); });
 }
+function setTier(uid, tier, btn){
+  if (btn){ btn.disabled = true; btn.textContent = '変更中…'; }
+  apiPost({ action:'set_tier', userId: state.userId, idToken: state.idToken, targetUid: uid, tier: tier })
+    .then(function(d){
+      if (!d.ok) throw new Error(d.error || '変更できませんでした');
+      state.people = d.people || state.people;
+      renderAdmin();
+    })
+    .catch(function(e){ showMsg(String(e.message || e), 'err'); renderAdmin(); });
+}
+
 function setMemberFlag(uid, value, btn){
   if (btn){ btn.disabled = true; btn.textContent = '…'; }
   apiPost({ action:'set_member', userId: state.userId, idToken: state.idToken, targetUid: uid, value: value })
@@ -276,24 +292,36 @@ function setMemberFlag(uid, value, btn){
     .catch(function(e){ showMsg('通信エラー: ' + e, 'err'); if(btn) btn.disabled=false; });
 }
 function renderAdmin(){
-  var members = state.people.filter(function(p){ return p.member; });
-  var trials  = state.people.filter(function(p){ return !p.member; });
-  function rowHtml(p){
-    var btn = p.member
-      ? '<button class="adbtn back" onclick="setMemberFlag(\'' + p.uid + '\', false, this)">体験者に戻す</button>'
-      : '<button class="adbtn make" onclick="setMemberFlag(\'' + p.uid + '\', true, this)">メンバーにする</button>';
-    return '<div class="adrow"><div class="adcol"><div class="adnm">' + esc(p.name || '(名前未取得)') + '</div>'
-      + '<div class="admeta">初回 ' + esc(p.first || '—') + '　体験 ' + p.trials + '回</div></div>' + btn + '</div>';
+  var groups = [
+    { key:'trial',  title:'体験者・未設定' },
+    { key:'semi',   title:'準メンバー' },
+    { key:'member', title:'メンバー' }
+  ];
+  function tierBtn(p, tier, label, cls){
+    if (p.tier === tier) return '<span class="adbtn" style="opacity:.4;pointer-events:none">' + label + '</span>';
+    return '<button class="adbtn ' + cls + '" onclick="setTier(\'' + p.uid + '\', \'' + tier + '\', this)">' + label + '</button>';
   }
-  q('head').innerHTML = '<h1>🔧 メンバー管理</h1>'
-    + '<p class="sub">「メンバーにする」を押すと、その人のリッチメニューが「参加投票」に切り替わり、歓迎メッセージが自動で届きます。</p>'
+  function rowHtml(p){
+    return '<div class="adrow"><div class="adcol"><div class="adnm">' + esc(p.name || '(名前未取得)') + '</div>'
+      + '<div class="admeta">初回 ' + esc(p.first || '—') + '　体験 ' + p.trials + '回　現在：' + esc(p.tierLabel || p.tier) + '</div></div>'
+      + '<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">'
+      +   tierBtn(p, 'trial',  '体験',   'back')
+      +   tierBtn(p, 'semi',   '準',     'make')
+      +   tierBtn(p, 'member', 'メンバー', 'make')
+      + '</div></div>';
+  }
+  q('head').innerHTML = '<h1>🔧 会員種別の管理</h1>'
+    + '<p class="sub">体験／準メンバー／メンバーを切り替えます。変更するとリッチメニューが切り替わり、本人にお知らせが届きます。<br>'
+    + '体験→準メンバーは初参加日の21時、準メンバー→メンバーは毎月24日22時に自動で上がります。</p>'
     + '<button id="backBtn" class="refline" style="border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:#fff;font-weight:700">← フォームに戻る</button>';
   q('backBtn').addEventListener('click', closeAdmin);
-  var h = '<div class="gbox"><div class="gbox-h">体験者・未設定（' + trials.length + '）</div>';
-  h += trials.length ? trials.map(rowHtml).join('') : '<div class="admeta" style="padding:8px 0">いません</div>';
-  h += '</div><div class="gbox"><div class="gbox-h">メンバー（' + members.length + '）</div>';
-  h += members.length ? members.map(rowHtml).join('') : '<div class="admeta" style="padding:8px 0">いません</div>';
-  h += '</div>';
+  var h = '';
+  groups.forEach(function(g){
+    var list = state.people.filter(function(p){ return (p.tier || (p.member ? 'member' : 'trial')) === g.key; });
+    h += '<div class="gbox"><div class="gbox-h">' + g.title + '（' + list.length + '）</div>';
+    h += list.length ? list.map(rowHtml).join('') : '<div class="admeta" style="padding:8px 0">いません</div>';
+    h += '</div>';
+  });
   q('root').innerHTML = h;
   q('footer').style.display = 'none';
 }
@@ -332,6 +360,9 @@ function markLive(ok){
 }
 
 /* ---------------- 描画 ---------------- */
+function selectedCount(){ var n = 0; for (var k in state.selected) if (state.selected[k]) n++; return n; }
+function remainingPicks(){ return Math.max(0, state.monthlyLimit - selectedCount()); }
+
 function pById(pid){ for (var i=0;i<state.practices.length;i++) if (state.practices[i].id===pid) return state.practices[i]; return null; }
 function rosterFor(pid){ for (var i=0;i<state.roster.length;i++) if (state.roster[i].id===pid) return state.roster[i]; return null; }
 function mineFor(pid){ for (var i=0;i<state.mine.length;i++) if (state.mine[i].practiceId===pid) return state.mine[i]; return null; }
@@ -358,18 +389,25 @@ function render(){
   }
   var html = '';
   state.practices.forEach(function(p){
-    var r = rosterFor(p.id) || { confirmed:[], waitlist:[], trials:[], capacity:p.capacity };
+    var r = rosterFor(p.id) || { members:[], membersWait:[], trials:[], capMembers:p.capacity };
     var mine = mineFor(p.id);
-    var conf = r.confirmed.length, cap = r.capacity, wait = r.waitlist.length;
+    // 参加者側ではメンバー／準メンバーを区別しない（運営の内部管理のみ）
+    var confList = r.members || r.confirmed || [];
+    var waitList = r.membersWait || r.waitlist || [];
+    var conf = confList.length, wait = waitList.length;
+    var cap = r.capMembers || ((r.capacity || 0) + (r.capSemi || 0)) || p.capacity;
     var trials = (r.trials || []), tn = trials.length;
     var sel = !!state.selected[p.id];
     var open = !!state.expanded[p.id];
 
     var badge;
+    // 空き判定は「自分が入れる枠」で見る（種別は画面に出さない）
+    var left = state.myRemaining[p.id];
+    if (left === undefined) left = cap - conf;
     if (mine && mine.status === 'confirmed')      badge = '<span class="badge b-mine">投票済み・参加確定</span>';
     else if (mine && mine.status === 'waitlist')  badge = '<span class="badge b-mine">キャンセル待ち ' + mine.waitlistPos + '番目</span>';
-    else if (conf >= cap)                         badge = '<span class="badge b-full">満席（チェックでキャンセル待ちに登録）</span>';
-    else                                          badge = '<span class="badge b-open">受付中・あと ' + (cap - conf) + ' 名</span>';
+    else if (left <= 0)                           badge = '<span class="badge b-full">満席（チェックでキャンセル待ちに登録）</span>';
+    else                                          badge = '<span class="badge b-open">受付中</span>';
 
     var pct = Math.min(100, Math.round(conf / cap * 100));
     var tp = [p.time, p.place].filter(function(s){ return s; }).join(' ・ ');
@@ -389,20 +427,28 @@ function render(){
       +   '<span>参加者リスト（確定 ' + conf + (wait > 0 ? ' ／ 待ち ' + wait : '') + (tn > 0 ? ' ／ 体験 ' + tn : '') + '）</span><span class="arw">▼</span>'
       + '</button>'
       + '<div class="rpanel" id="rp-' + p.id + '" ' + (open ? '' : 'hidden') + '>'
-      +   '<div class="rgrp"><div class="rt">参加確定（' + conf + ' / ' + cap + '）</div><ol>' + nameList(r.confirmed) + '</ol></div>'
-      +   (wait > 0 ? '<div class="rgrp w"><div class="rt">キャンセル待ち（' + wait + '・先着順）</div><ol>' + r.waitlist.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol></div>' : '')
-      +   (tn > 0 ? '<div class="rgrp"><div class="rt">体験・友達（' + tn + ' / ' + (p.capTrial || 0) + '）</div><ol>' + trials.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol></div>' : '')
+      +   '<div class="rgrp"><div class="rt">参加確定（' + conf + ' / ' + cap + '）</div><ol>' + nameList(confList) + '</ol></div>'
+      +   (wait > 0 ? '<div class="rgrp w"><div class="rt">キャンセル待ち（' + wait + '・先着順）</div><ol>' + waitList.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol></div>' : '')
+      +   (tn > 0 ? '<div class="rgrp"><div class="rt">体験（' + tn + ' / ' + (r.capTrial || p.capTrial || 0) + '）</div><ol>' + trials.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol></div>' : '')
       + '</div>'
       + '</div>';
   });
 
-  html += guestSectionHtml();
+  html += '<div class="gbox"><div class="gbox-h">友達を誘うときは</div>'
+       +  '<p class="gbox-sub">お友達には<b>体験申込のリンク</b>を送ってください。'
+       +  'お友達ご本人が名前・年齢・性別と<b>紹介者のお名前</b>を入力して申し込みます。'
+       +  '（体験枠は各日わずかです）</p>'
+       +  '<div style="padding:0 14px 14px"><div style="font-size:12px;color:var(--sub);word-break:break-all;background:#f7f7f9;border-radius:8px;padding:10px">'
+       +  'https://liff.line.me/2011314745-16BXRKX0?mode=trial</div></div></div>';
   if (state.isAdmin){
     html += '<div style="text-align:center;margin-top:18px"><button onclick="openAdmin()" '
       + 'style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--sub);font-weight:700">🔧 メンバー管理</button></div>';
   }
 
   q('root').innerHTML = html;
+  var ll = q('limit-lead');
+  if (ll) ll.innerHTML = '参加できるのは月に <b>' + state.monthlyLimit
+    + '回</b>までです。現在 <b>' + selectedCount() + '回</b> 選択中（残り ' + remainingPicks() + '回）。';
   q('footer').style.display = 'block';
   updateSubmitBtn();
   if (state.guestForm){ var n = q('gf-name'); if (n) n.focus(); }
@@ -490,7 +536,11 @@ function updateSubmitBtn(){
     btn.textContent = 'この内容で送信'; btn.classList.remove('warn');
   }
 }
-function toggle(pid){ state.touched = true; state.selected[pid] = !state.selected[pid]; render(); }
+function toggle(pid){
+  if (!state.selected[pid] && selectedCount() >= state.monthlyLimit){
+    showMsg('参加できるのは月に' + state.monthlyLimit + '回までです。ほかの日のチェックを外してから選んでください。','err');
+    return;
+  } state.touched = true; state.selected[pid] = !state.selected[pid]; render(); }
 
 function renderResult(results){
   var ok = results.filter(function(r){ return r.status==='confirmed'; });
@@ -557,17 +607,20 @@ function renderTrial(){
   var nm = (mt && mt.name) || state.lineName || '';
   var ag = (mt && mt.age) || '';
   var gd = (mt && mt.gender) || '男性';
+  var rf = (mt && mt.referrer) || '';
   function genOpt(v){ return '<option' + (v===gd?' selected':'') + '>' + v + '</option>'; }
 
   h += '<div class="gbox">'
     + '<div class="gbox-h">' + (mt ? '体験の内容を変更' : '体験に申し込む') + '</div>'
     + '<p class="gbox-sub">行きたい日を選び、お名前・年齢・性別を入力して送信してください。'
+    + 'メンバーの方に誘われた場合は、<b>紹介者のお名前</b>も入れてください（任意）。'
     + '当日は開始時間までに体育館の正面入り口に集合、参加費は500円です。</p>'
     + '<div class="gform">'
     +   '<select id="tr-day">' + opts + '</select>'
     +   '<input id="tr-name" placeholder="お名前" autocomplete="name" value="' + esc(nm) + '">'
     +   '<div class="row"><input id="tr-age" class="age" type="number" inputmode="numeric" placeholder="年齢（だいたいでOK）" value="' + esc(ag) + '">'
     +   '<select id="tr-gender" class="gen">' + genOpt('男性') + genOpt('女性') + genOpt('その他') + '</select></div>'
+    +   '<input id="tr-ref" placeholder="紹介者のお名前（任意・メンバーに誘われた方）" value="' + esc(rf) + '">'
     +   '<div class="gform-btns">'
     +     '<button class="add" onclick="submitTrial()">' + (mt ? 'この内容で変更' : '体験を申し込む') + '</button>'
     +     (mt ? '<button onclick="closeTrialForm()">やめる</button>' : '')
@@ -592,6 +645,7 @@ function submitTrial(){
   var name = (q('tr-name') && q('tr-name').value || '').trim();
   var age = (q('tr-age') && q('tr-age').value || '').trim();
   var gender = q('tr-gender') ? q('tr-gender').value : '';
+  var referrer = (q('tr-ref') && q('tr-ref').value || '').trim();
   if (!pid){ showMsg('体験に行きたい日を選んでください（満席の日は選べません）。','err'); return; }
   if (!name){ showMsg('お名前を入力してください。','err'); return; }
   if (!age){ showMsg('年齢を入力してください（だいたいでOK）。','err'); return; }
@@ -600,7 +654,7 @@ function submitTrial(){
   showMsg('送信中…','');
   state.busy = true;
   apiPost({ action:'submit_trial', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken,
-            practiceId: pid, name: name, age: age, gender: gender })
+            practiceId: pid, name: name, age: age, gender: gender, referrer: referrer })
     .then(function(res){
       state.busy = false;
       if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + (res.error||''),'err'); render(); return; }
