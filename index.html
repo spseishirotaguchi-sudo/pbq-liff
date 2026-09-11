@@ -59,6 +59,7 @@
   .refline .live{display:flex;align-items:center;gap:6px}
   .refline .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none;box-shadow:0 0 0 3px rgba(30,138,76,.14)}
   .refline .dot.off{background:var(--brick);box-shadow:0 0 0 3px rgba(178,58,46,.14)}
+  .refline .ver{margin-left:8px;font-size:10px;color:var(--ink-3);opacity:.7;font-weight:700}
 
   /* ---------- 朝/夜の部 ---------- */
   .seswrap{display:grid;gap:13px;margin-top:2px}
@@ -267,6 +268,8 @@ function boot(){
     });
 }
 
+var APP_VERSION = 'v3.1 (09/11)';
+
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
             pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
 
@@ -284,7 +287,8 @@ function renderHead_(){
       '<div class="hero"><span class="ballmark"></span><span class="kicker">FIRST TIME</span>' +
       '<h1>体験に<em>申し込む</em></h1><span class="seam"></span>' +
       '<p class="sub">行きたい日を<b>1つ</b>選んで送信してください。体験枠には限りがあり、満席の日は選べません。<br>' +
-      '送信すると当日の持ち物・流れをLINEにお送りします。</p>' + name + '</div>';
+      '送信すると当日の持ち物・流れをLINEにお送りします。</p>' + name +
+      '<div class="refline"><span class="ver">' + APP_VERSION + '</span></div></div>';
     return;
   }
   q('head').innerHTML =
@@ -292,7 +296,8 @@ function renderHead_(){
     '<h1>練習日に<em>投票</em>する</h1><span class="seam"></span>' +
     '<p class="sub">行ける日を<b>すべて</b>選んで送信。満席の日はキャンセル待ちになり、空きが出たら先着順にLINEで通知します。</p>' +
     '<p class="sub" id="limit-lead"></p>' + name +
-    '<div class="refline"><span class="live"><span class="dot" id="dot"></span><span id="fresh">読み込み中…</span></span>' +
+    '<div class="refline"><span class="live"><span class="dot" id="dot"></span><span id="fresh">読み込み中…</span>' +
+    '<span class="ver">' + APP_VERSION + '</span></span>' +
     '<button id="refreshBtn">更新</button></div></div>';
   var rb = q('refreshBtn');
   if (rb) rb.addEventListener('click', function(){ silentRefresh(true); });
@@ -513,7 +518,15 @@ function nameList(arr){
   return arr.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('');
 }
 
-function sessionOf(p){ return (p && p.session) === 'am' ? 'am' : 'pm'; }
+function sessionOf(p){
+  if (!p) return 'pm';
+  if (p.session === 'am' || p.session === 'pm') return p.session;
+  // GASが旧版で session を返さない場合でも動くようにする
+  var m = String(p.time || '').match(/(\d{1,2})\s*[:：]/);
+  if (m) return Number(m[1]) < 12 ? 'am' : 'pm';
+  if (/朝/.test(String(p.place || '') + String(p.time || ''))) return 'am';
+  return 'pm';
+}
 function practicesIn(ses){ return state.practices.filter(function(p){ return sessionOf(p) === ses; }); }
 function pickSession(ses){ state.session = ses; showMsg('',''); window.scrollTo(0,0); renderHead_(); render(); }
 function clearSession(){ state.session = null; showMsg('',''); window.scrollTo(0,0); renderHead_(); render(); }
@@ -935,7 +948,12 @@ q('submitBtn').addEventListener('click', function(){
             practiceIds: ids })
     .then(function(res){
       state.busy = false; btn.disabled = false; updateSubmitBtn();
-      if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + res.error, 'err'); return; }
+      if (!res.ok){
+        if (handleAuthFail(res)) return;
+        showMsg('送信に失敗しました: ' + res.error + '\n\n最新の状態を読み直しました。画面のチェックが実際の登録内容です。', 'err');
+        state.touched = false; loadAll();      // 画面と実データのズレを防ぐ
+        return;
+      }
       showMsg('', '');
       renderResult(res.results);
       apiPost({ action:'notify', lineUserId: state.userId, idToken: state.idToken, results: res.results }).catch(function(){});
@@ -944,7 +962,8 @@ q('submitBtn').addEventListener('click', function(){
     })
     .catch(function(e){
       state.busy = false; btn.disabled = false; updateSubmitBtn();
-      showMsg('送信に失敗しました（通信）: ' + e, 'err');
+      showMsg('通信が途切れました。保存できているか確認するため、最新の状態を読み直します。\n画面のチェックが実際の登録内容です。', 'err');
+      state.touched = false; loadAll();
     });
 });
 
