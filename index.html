@@ -1,973 +1,130 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>p.b.q 練習日</title>
-<link rel="preconnect" href="https://script.google.com" crossorigin>
-<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
-<link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
-<link rel="dns-prefetch" href="https://api.line.me">
-<link rel="preload" href="https://static.line-scdn.net/liff/edge/2/sdk.js" as="script">
-<style>
-  :root{
-    --navy:#232C5C; --navy-d:#141A3C; --navy-l:#3C4780;
-    --brick:#B23A2E; --brick-d:#8E2B22; --brick-l:#D4503F;
-    --amber:#E08A2B; --amber-d:#C06E15;
-    --paper:#FBF8F3; --paper-2:#F3EDE3; --card:#FFFFFF;
-    --ink:#1E2233; --ink-2:#4A5168; --ink-3:#8A90A6;
-    --line:#E7E1D6; --ok:#1E8A4C; --wl:#B8761F;
-    --sh-s:0 1px 2px rgba(35,44,92,.06),0 4px 14px rgba(35,44,92,.07);
-    --sh-m:0 2px 6px rgba(35,44,92,.07),0 14px 34px rgba(35,44,92,.10);
-    --r:18px;
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;padding:0}
-  body{
-    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
-    background:var(--paper); color:var(--ink); -webkit-text-size-adjust:100%;
-    background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20600%20560%27%20fill%3D%27none%27%20stroke%3D%27%23DCCFBB%27%20stroke-width%3D%272.5%27%3E%0A%3Crect%20x%3D%2730%27%20y%3D%2730%27%20width%3D%27540%27%20height%3D%27500%27%20rx%3D%272%27%2F%3E%0A%3Cline%20x1%3D%2730%27%20y1%3D%27530%27%20x2%3D%27570%27%20y2%3D%27530%27%2F%3E%0A%3Crect%20x%3D%27210%27%20y%3D%2730%27%20width%3D%27180%27%20height%3D%27190%27%2F%3E%0A%3Ccircle%20cx%3D%27300%27%20cy%3D%27220%27%20r%3D%2760%27%2F%3E%0A%3Ccircle%20cx%3D%27300%27%20cy%3D%2786%27%20r%3D%279%27%20stroke-width%3D%273%27%2F%3E%0A%3Cpath%20d%3D%27M110%2030%20L110%20120%20A%20190%20190%200%200%200%20490%20120%20L490%2030%27%2F%3E%0A%3Ccircle%20cx%3D%27300%27%20cy%3D%27530%27%20r%3D%2770%27%2F%3E%0A%3C%2Fsvg%3E");
-    background-repeat:no-repeat; background-position:center -70px;
-    background-size:132% auto; background-attachment:fixed;
-  }
-  body:before{content:"";position:fixed;inset:0;pointer-events:none;
-    background:linear-gradient(180deg,rgba(251,248,243,.55) 0%,rgba(251,248,243,.9) 34%,var(--paper) 62%)}
-  .wrap{position:relative;max-width:560px;margin:0 auto;padding:18px 15px 136px}
-
-  /* ---------- ヘッダー ---------- */
-  .hero{position:relative;padding:4px 2px 16px}
-  .hero .ballmark{position:absolute;right:-26px;top:-16px;width:132px;height:132px;opacity:.16;
-    background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20200%20200%27%20fill%3D%27none%27%20stroke%3D%27%23C9761F%27%20stroke-width%3D%273%27%20stroke-linecap%3D%27round%27%3E%0A%3Ccircle%20cx%3D%27100%27%20cy%3D%27100%27%20r%3D%2796%27%2F%3E%0A%3Cline%20x1%3D%27100%27%20y1%3D%274%27%20x2%3D%27100%27%20y2%3D%27196%27%2F%3E%0A%3Cline%20x1%3D%274%27%20y1%3D%27100%27%20x2%3D%27196%27%20y2%3D%27100%27%2F%3E%0A%3Cpath%20d%3D%27M26%2026%20C%2074%2070%2074%20130%2026%20174%27%2F%3E%0A%3Cpath%20d%3D%27M174%2026%20C%20126%2070%20126%20130%20174%20174%27%2F%3E%0A%3C%2Fsvg%3E") center/contain no-repeat;pointer-events:none}
-  .kicker{display:inline-flex;align-items:center;gap:7px;font-size:10.5px;font-weight:900;letter-spacing:.17em;
-    color:var(--brick);background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:6px 13px;
-    text-transform:uppercase;box-shadow:var(--sh-s)}
-  h1{font-size:30px;line-height:1.2;margin:13px 0 0;color:var(--navy);font-weight:900;letter-spacing:-.022em}
-  h1 em{font-style:normal;color:var(--brick);position:relative;white-space:nowrap}
-  .seam{display:block;width:150px;height:15px;margin:9px 0 12px;
-    background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20240%2024%27%20fill%3D%27none%27%20stroke%3D%27%23B23A2E%27%20stroke-width%3D%273%27%20stroke-linecap%3D%27round%27%3E%0A%3Cpath%20d%3D%27M4%2012%20C%2060%20-2%20180%2026%20236%2012%27%2F%3E%0A%3C%2Fsvg%3E") left center/contain no-repeat}
-  .sub{color:var(--ink-2);font-size:13.5px;margin:0 0 6px;line-height:1.72;font-weight:500}
-  .sub b{color:var(--navy);font-weight:800}
-  .who{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line);
-    border-radius:14px;padding:12px 14px;margin:14px 0 0;font-size:12.5px;color:var(--ink-3);box-shadow:var(--sh-s)}
-  .who .ball{width:30px;height:30px;flex:none;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20200%20200%27%20fill%3D%27none%27%20stroke%3D%27%23C9761F%27%20stroke-width%3D%273%27%20stroke-linecap%3D%27round%27%3E%0A%3Ccircle%20cx%3D%27100%27%20cy%3D%27100%27%20r%3D%2796%27%2F%3E%0A%3Cline%20x1%3D%27100%27%20y1%3D%274%27%20x2%3D%27100%27%20y2%3D%27196%27%2F%3E%0A%3Cline%20x1%3D%274%27%20y1%3D%27100%27%20x2%3D%27196%27%20y2%3D%27100%27%2F%3E%0A%3Cpath%20d%3D%27M26%2026%20C%2074%2070%2074%20130%2026%20174%27%2F%3E%0A%3Cpath%20d%3D%27M174%2026%20C%20126%2070%20126%20130%20174%20174%27%2F%3E%0A%3C%2Fsvg%3E") center/contain no-repeat}
-  .who b{color:var(--ink);font-size:14.5px;font-weight:800}
-
-  .refline{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:11px 2px 16px;
-    font-size:11px;color:var(--ink-3);font-weight:600}
-  .refline button{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:6px 14px;
-    font-size:11.5px;color:var(--navy);font-weight:800;box-shadow:var(--sh-s)}
-  .refline .live{display:flex;align-items:center;gap:6px}
-  .refline .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none;box-shadow:0 0 0 3px rgba(30,138,76,.14)}
-  .refline .dot.off{background:var(--brick);box-shadow:0 0 0 3px rgba(178,58,46,.14)}
-  .refline .ver{margin-left:8px;font-size:10px;color:var(--ink-3);opacity:.7;font-weight:700}
-
-  /* ---------- 朝/夜の部 ---------- */
-  .seswrap{display:grid;gap:13px;margin-top:2px}
-  .sescard{position:relative;width:100%;text-align:left;border:1.5px solid var(--line);border-radius:22px;
-    padding:22px 22px 20px;background:var(--card);box-shadow:var(--sh-m);overflow:hidden;cursor:pointer;display:block;
-    transition:transform .14s ease,box-shadow .14s ease}
-  .sescard:active{transform:scale(.985)}
-  .sescard:before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px}
-  .sescard.am:before{background:linear-gradient(180deg,var(--amber),var(--amber-d))}
-  .sescard.pm:before{background:linear-gradient(180deg,var(--navy-l),var(--navy))}
-  .sescard:after{content:"";position:absolute;right:-34px;bottom:-44px;width:158px;height:158px;
-    background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20200%20200%27%20fill%3D%27none%27%20stroke%3D%27%23C9761F%27%20stroke-width%3D%273%27%20stroke-linecap%3D%27round%27%3E%0A%3Ccircle%20cx%3D%27100%27%20cy%3D%27100%27%20r%3D%2796%27%2F%3E%0A%3Cline%20x1%3D%27100%27%20y1%3D%274%27%20x2%3D%27100%27%20y2%3D%27196%27%2F%3E%0A%3Cline%20x1%3D%274%27%20y1%3D%27100%27%20x2%3D%27196%27%20y2%3D%27100%27%2F%3E%0A%3Cpath%20d%3D%27M26%2026%20C%2074%2070%2074%20130%2026%20174%27%2F%3E%0A%3Cpath%20d%3D%27M174%2026%20C%20126%2070%20126%20130%20174%20174%27%2F%3E%0A%3C%2Fsvg%3E") center/contain no-repeat;opacity:.13}
-  .sescard .st{font-size:10px;font-weight:900;letter-spacing:.18em;color:var(--ink-3)}
-  .sescard .sh{font-size:29px;font-weight:900;margin-top:6px;letter-spacing:-.02em;color:var(--navy);display:flex;align-items:center;gap:9px}
-  .sescard.am .sh{color:var(--amber-d)}
-  .sescard .sd{font-size:13px;color:var(--ink-2);margin-top:8px;line-height:1.66;font-weight:600}
-  .sescard .sn{display:inline-block;margin-top:14px;font-size:12px;font-weight:900;border-radius:999px;padding:6px 14px;
-    background:var(--paper-2);color:var(--navy)}
-  .sescard.am .sn{background:#FCF0DF;color:var(--amber-d)}
-  .sescard .go{position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:22px;color:var(--ink-3)}
-  .seshint{color:var(--ink-3);font-size:12.5px;text-align:center;margin-top:18px;line-height:1.7;font-weight:600}
-
-  .sesbar{display:flex;align-items:center;gap:10px;margin:0 0 15px}
-  .sesbar .back{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 14px;
-    font-size:12px;color:var(--navy);font-weight:800;flex:none;box-shadow:var(--sh-s)}
-  .sestag{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:900;color:#fff;
-    border-radius:999px;padding:8px 16px;box-shadow:var(--sh-s)}
-  .sestag.am{background:linear-gradient(135deg,var(--amber),var(--amber-d))}
-  .sestag.pm{background:linear-gradient(135deg,var(--navy-l),var(--navy))}
-
-  /* ---------- 練習日 ---------- */
-  .day{position:relative;background:var(--card);border:1.5px solid var(--line);border-radius:var(--r);
-    margin-bottom:12px;overflow:hidden;box-shadow:var(--sh-s);transition:border-color .14s,box-shadow .14s}
-  .day.sel{border-color:var(--amber);box-shadow:0 0 0 3px rgba(224,138,43,.16),var(--sh-m)}
-  .pick{display:flex;align-items:flex-start;gap:13px;padding:16px 16px 14px;cursor:pointer}
-  .pick .cb{width:27px;height:27px;border-radius:9px;border:2px solid #D8D2C6;flex:none;margin-top:2px;background:#fff;
-    display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:900;transition:.14s}
-  .day.sel .pick .cb{background:var(--amber);border-color:var(--amber);box-shadow:0 2px 8px rgba(224,138,43,.4)}
-  .pick .body{flex:1;min-width:0}
-  .pick .d{font-weight:900;font-size:19px;line-height:1.28;letter-spacing:-.02em;color:var(--navy)}
-  .pick .tp{font-size:13px;color:var(--ink-2);margin-top:5px;font-weight:600}
-  .pick .meta{font-size:12px;color:var(--ink-3);margin-top:9px;font-weight:700}
-  .bar{height:7px;background:var(--paper-2);border-radius:999px;margin-top:9px;overflow:hidden}
-  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--amber),var(--brick-l));border-radius:999px;transition:width .3s}
-  .badge{display:inline-block;font-size:11px;font-weight:900;padding:5px 12px;border-radius:999px;margin-top:10px;letter-spacing:.02em}
-  .b-open{background:#E6F5EC;color:var(--ok)}
-  .b-full{background:#FBEAE7;color:var(--brick)}
-  .b-mine{background:var(--navy);color:#fff}
-
-  .rtoggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:#FCFAF6;border:0;
-    border-top:1.5px solid var(--line);padding:13px 16px;font-size:12.5px;color:var(--ink-2);cursor:pointer;font-weight:800}
-  .rtoggle .arw{transition:transform .16s;font-size:10px;color:var(--ink-3)}
-  .rtoggle[aria-expanded="true"] .arw{transform:rotate(180deg)}
-  .rpanel{padding:4px 16px 16px;border-top:1.5px solid var(--line);background:#FCFAF6}
-  .rpanel[hidden]{display:none}
-  .rgrp{margin-top:12px}
-  .rgrp .rt{font-size:11px;font-weight:900;color:var(--ink-3);letter-spacing:.06em}
-  .rgrp.w .rt{color:var(--wl)}
-  .rgrp ol{margin:7px 0 0;padding-left:22px}
-  .rgrp ol li{font-size:13.5px;line-height:1.6;padding:1px 0;color:var(--ink-2);font-weight:600}
-  .rgrp.w ol li{color:#96631C}
-  .rgrp .none{list-style:none;margin-left:-22px;color:var(--ink-3);font-size:12.5px}
-
-  /* ---------- ボックス ---------- */
-  .gbox{position:relative;background:var(--card);border:1.5px solid var(--line);border-radius:var(--r);
-    padding:17px;margin-top:17px;box-shadow:var(--sh-s);overflow:hidden}
-  .gbox-h{font-weight:900;font-size:16px;color:var(--navy)}
-  .gbox-sub{font-size:12.5px;color:var(--ink-2);margin:6px 0 10px;line-height:1.7;font-weight:500}
-  .gform{margin-top:12px;display:flex;flex-direction:column;gap:10px}
-  .gform input,.gform select{font-size:16px;padding:13px;border:1.5px solid var(--line);border-radius:12px;
-    background:#fff;color:var(--ink);width:100%;font-weight:600}
-  .gform input:focus,.gform select:focus{outline:0;border-color:var(--amber);box-shadow:0 0 0 3px rgba(224,138,43,.14)}
-  .gform .row{display:flex;gap:10px}
-  .gform .row .age{flex:1;min-width:0}
-  .gform .row .gen{width:114px;flex:none}
-  .gform-btns{display:flex;gap:10px}
-  .gform-btns button{flex:1;padding:14px;border-radius:12px;font-size:14.5px;font-weight:900;
-    border:1.5px solid var(--line);background:#fff;color:var(--navy)}
-  .gform-btns button.add{background:var(--brick);color:#fff;border-color:var(--brick);box-shadow:0 4px 14px rgba(178,58,46,.28)}
-
-  .invurl{font-size:14px;color:var(--navy);word-break:break-all;background:var(--paper-2);
-    border:2px dashed #D8CFBE;border-radius:13px;padding:15px;text-align:center;font-weight:900;letter-spacing:.01em}
-  .invbtn{width:100%;margin-top:11px;padding:15px;border:0;border-radius:13px;background:var(--brick);color:#fff;
-    font-size:15px;font-weight:900;letter-spacing:.02em;box-shadow:0 5px 16px rgba(178,58,46,.3)}
-
-  .adrow{display:flex;align-items:center;gap:9px;padding:13px 0;border-top:1.5px solid var(--line)}
-  .adrow:first-of-type{border-top:0}
-  .adcol{flex:1;min-width:0}
-  .adnm{font-weight:800;font-size:14.5px;color:var(--navy)}
-  .admeta{font-size:11.5px;color:var(--ink-3);margin-top:3px;font-weight:600}
-  .adbtn{flex:none;border-radius:10px;padding:9px 13px;font-size:12px;font-weight:900;
-    border:1.5px solid var(--line);background:#fff;color:var(--navy)}
-  .adbtn.make{background:var(--ok);color:#fff;border-color:var(--ok)}
-  .adbtn.back{color:var(--ink-3)}
-  .adbtn:disabled{opacity:.45}
-
-  /* ---------- フッター ---------- */
-  .footer{position:fixed;left:0;right:0;bottom:0;background:rgba(251,248,243,.92);backdrop-filter:blur(16px);
-    border-top:1.5px solid var(--line);padding:13px 15px calc(13px + env(safe-area-inset-bottom));display:none}
-  .footer .inner{max-width:560px;margin:0 auto}
-  button.primary{width:100%;background:var(--brick);color:#fff;border:0;border-radius:15px;padding:17px;
-    font-size:16.5px;font-weight:900;letter-spacing:.03em;box-shadow:0 6px 20px rgba(178,58,46,.34)}
-  button.primary.warn{background:var(--ink-2);box-shadow:0 6px 20px rgba(74,81,104,.3)}
-  button.primary:disabled{opacity:.42;box-shadow:none}
-
-  .result{background:var(--card);border:1.5px solid var(--line);border-radius:var(--r);padding:18px;
-    margin-bottom:15px;box-shadow:var(--sh-s)}
-  .result h2{font-size:17.5px;margin:0 0 4px;font-weight:900;color:var(--navy)}
-  .result .grp{margin-top:14px}
-  .result .grp .t{font-size:13px;font-weight:900}
-  .result .grp.ok .t{color:var(--ok)}
-  .result .grp.wait .t{color:var(--wl)}
-  .result .grp.cxl .t{color:var(--ink-3)}
-  .result ul{margin:7px 0 0;padding-left:20px}
-  .result li{font-size:14px;line-height:1.7;font-weight:600;color:var(--ink-2)}
-  .result .note{font-size:12px;color:var(--ink-3);margin-top:10px;line-height:1.6}
-  .msg{padding:14px 15px;border-radius:13px;margin-bottom:15px;font-size:14px;line-height:1.7;white-space:pre-wrap;font-weight:700}
-  .msg.err{background:#FBEAE7;color:var(--brick);border:1.5px solid #F0CFC9}
-  .loading{text-align:center;color:var(--ink-3);padding:56px 0;font-size:13.5px;font-weight:600}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f1e9">
+  <title>p.b.q｜また、バスケがある日々へ。福岡の20代社会人バスケ</title>
+  <meta name="description" content="福岡で、もう一度バスケを。p.b.qは20代社会人・経験者のためのバスケサークルです。ブランク歓迎、一人参加も歓迎。1回500円。練習日程の確認と体験申込みは公式LINEから。">
+  <link rel="canonical" href="https://spseishirotaguchi-sudo.github.io/pbq-lp/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ja_JP">
+  <meta property="og:title" content="また、バスケがある日々へ。｜p.b.q">
+  <meta property="og:description" content="福岡の20代社会人バスケ。経験者限定・ブランク歓迎・1回500円。まずはLINEで練習日程を確認。">
+  <meta property="og:url" content="https://spseishirotaguchi-sudo.github.io/pbq-lp/">
+  <meta property="og:image" content="https://spseishirotaguchi-sudo.github.io/pbq-lp/img/teamphoto.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="wrap">
-  <div id="head"></div>
-  <div id="msg"></div>
-  <div id="result"></div>
-  <div id="root"><div class="loading">読み込み中…</div></div>
-</div>
+<a class="skip-link" href="#main">本文へ移動</a>
+<header class="site-header wrap">
+  <a class="wordmark" href="#" aria-label="p.b.q ページの先頭へ">p.b.q<span class="logo-dot" aria-hidden="true"></span></a>
+  <span class="header-location">FUKUOKA / BASKETBALL CLUB</span>
+  <nav aria-label="メインナビゲーション">
+    <a class="nav-about" href="#about">p.b.qについて</a>
+    <a class="header-cta" href="https://lin.ee/rdgWlbC" target="_blank" rel="noopener">LINEで日程を確認 <span aria-hidden="true">↗</span></a>
+  </nav>
+</header>
+<main id="main">
+  <div class="hero-stage"><section class="hero wrap" aria-labelledby="hero-title">
+    <div class="hero-copy"><div class="hero-heading">
+      <p class="eyebrow"><span class="small-square" aria-hidden="true"></span> 福岡の20代社会人バスケサークル</p>
+      <h1 id="hero-title"><span>また、バスケが</span><br><span>ある<span class="outline-word">日々</span>へ。</span></h1>
+      </div><div class="hero-details"><p class="hero-lead">仕事終わり、体育館に集まって。<br>パスをつないで、シュートを打って。<br>あの頃の「楽しい」を、もう一度。</p>
+      <p class="hero-qualification">経験者限定。ブランクも、一人参加も歓迎。<br><span class="hero-fee">1回500円・都度払い</span></p>
+      <a class="button" href="https://lin.ee/rdgWlbC" target="_blank" rel="noopener">LINEで練習日程を見る <span aria-hidden="true">↗</span></a>
+      <p class="button-note">公式LINEを友だち追加して、日程確認・体験申込みへ。</p></div>
+    </div>
+    <div class="hero-visual">
+      <div class="photo-index"><span>FUKUOKA, JAPAN</span><span>p.b.q BASKETBALL CLUB</span></div>
+      <img class="hero-photo" src="assets/gallery2-900.webp" srcset="assets/gallery2-560.webp 560w, assets/gallery2-900.webp 618w" sizes="(max-width: 700px) 100vw, 46vw" width="618" height="1100" alt="ゴール前でバスケを楽しむp.b.qのメンバー" fetchpriority="high">
+      <div class="photo-tag"><span>バスケ、やっぱり好きだ。</span></div>
 
-<div class="footer" id="footer">
-  <div class="inner"><button class="primary" id="submitBtn">この内容で送信</button></div>
-</div>
+    </div>
+  </section>
+  </div><div class="facts wrap" aria-label="参加の基本情報">
+    <div><span class="fact-label">WHO</span><p>20代社会人 <small>／ 経験者限定</small></p></div>
+    <div><span class="fact-label">WHERE</span><p>福岡市内 <small>／ 体育館で活動</small></p></div>
+    <div><span class="fact-label">FEE</span><p>1回 <strong>500</strong> 円 <small>／ 都度払い</small></p></div>
+  </div>
 
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <section class="intro section wrap" id="about" aria-labelledby="about-title">
+    <div class="section-kicker"><span>01 — ABOUT US</span><span>あの頃の「好き」を、今も。</span></div>
+    <div class="intro-grid">
+      <h2 id="about-title">仕事終わりが、<br><span class="accent">待ち遠しくなる。</span></h2>
+      <div class="intro-copy"><p>最後にシュートを打ったのは、いつだろう。<br>バスケは好き。でも、やる場所がない。<br>そんな20代の社会人へ。</p><p>p.b.qは、福岡市内で活動するバスケサークルです。部活やサークルでプレーしていた人が、仕事終わりに集まって、またバスケを楽しめる場所をつくっています。</p><p>久しぶりでも、一人でも。<br>「またやりたい」を、次の練習で。</p></div>
+    </div>
+    <figure class="team-photo"><img src="assets/teamphoto-1600.webp" srcset="assets/teamphoto-900.webp 900w, assets/teamphoto-1600.webp 1600w" sizes="(max-width: 700px) 92vw, 88vw" width="1600" height="736" alt="体育館に集まったp.b.qのメンバーたちの集合写真" loading="lazy" decoding="async"><figcaption><span>THIS IS p.b.q</span><span>いつもの体育館で、いつものバスケを。</span></figcaption></figure>
+  </section>
+
+  <section class="experience section" aria-labelledby="experience-title">
+    <div class="wrap">
+      <div class="section-kicker"><span>02 — YOUR NEXT GAME</span><span>久しぶりの一歩に。</span></div>
+      <div class="experience-grid">
+        <div class="experience-photo"><img src="assets/gallery7-1100.webp" srcset="assets/gallery7-640.webp 640w, assets/gallery7-1100.webp 1100w" sizes="(max-width: 700px) 100vw, 50vw" width="1100" height="825" alt="練習後にゴールの下で集まるp.b.qのメンバー" loading="lazy" decoding="async"><span class="image-stamp">一人で来ても、<br>一緒にバスケ。</span></div>
+        <div class="experience-copy"><h2 id="experience-title">ブランクがあっても、<br>バスケが好きなら。</h2>
+          <div class="reason"><span>01</span><div><h3>何年ぶりでも、歓迎です。</h3><p>学生時代の部活やサークルでの経験があればOK。今の自分で、またプレーする楽しさを。</p></div></div>
+          <div class="reason"><span>02</span><div><h3>一人参加も、気兼ねなく。</h3><p>友だちと予定を合わせなくても大丈夫。一人でも、女性でも参加しやすい雰囲気づくりを大切にしています。</p></div></div>
+          <div class="reason"><span>03</span><div><h3>まずは、1回から。</h3><p>参加費は1回500円の都度払い。日程を見て、参加できる日に体験を申し込めます。</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="details-section section wrap" id="details" aria-labelledby="details-title">
+    <div class="section-kicker"><span>03 — CLUB INFORMATION</span><span>参加の前に。</span></div>
+    <div class="details-grid">
+      <div><h2 id="details-title">参加条件・料金</h2><p class="section-intro">参加条件と費用をまとめました。<br>開催日時・会場は公式LINEで確認できます。</p><div class="price"><span>参加費 / 1回</span><p><strong>500</strong><span>円</span></p><small>都度払い・事前決済なし</small></div></div>
+      <dl class="info-list">
+        <div><dt>対象</dt><dd>20代の社会人・男女歓迎<span>学生の方は対象外です。</span></dd></div>
+        <div><dt>経験</dt><dd>部活・サークルでのバスケ経験がある方<span>ブランクの年数は問いません。初心者の方は対象外です。</span></dd></div>
+        <div><dt>場所</dt><dd>福岡市内の体育館<span>福岡中学校・市営体育館など。会場は日程によって異なります。</span></dd></div>
+        <div><dt>日程</dt><dd>公式LINEで練習日程を確認<span>参加したい日を選んで、体験をお申し込みください。</span></dd></div>
+        <div><dt>キャンセル</dt><dd>当日でもキャンセル料無料<span>予定が変わった際は、キャンセルの手続きをお願いします。</span></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="join-section section" id="join" aria-labelledby="join-title">
+    <div class="wrap">
+      <div class="section-kicker"><span>04 — HOW TO JOIN</span><span>次の練習で、会いましょう。</span></div>
+      <div class="join-heading"><h2 id="join-title">次の練習へ、<br>3ステップ。</h2><p>日程の確認から体験申込みまで、公式LINEで。<br>まずは、参加できる日を探してみてください。</p></div>
+      <ol class="steps">
+        <li><span class="step-number">01</span><h3>公式LINEを<br>友だち追加</h3><p>下のボタンから、p.b.qの公式LINEへ。</p></li>
+        <li><span class="step-number">02</span><h3>練習日程を<br>チェック</h3><p>開催日時と会場を見て、参加できる日を選びます。</p></li>
+        <li><span class="step-number">03</span><h3>体験を申し込んで、<br>体育館へ</h3><p>参加したい日に申込み。久しぶりのバスケを楽しもう。</p></li>
+      </ol>
+      <div class="join-action"><a class="button" href="https://lin.ee/rdgWlbC" target="_blank" rel="noopener">LINEで練習日程を見る <span aria-hidden="true">↗</span></a><p class="button-note">公式LINEの友だち追加画面が開きます。</p></div>
+    </div>
+  </section>
+
+  <section class="faq section wrap" aria-labelledby="faq-title">
+    <div class="faq-heading"><p class="eyebrow">05 — QUESTIONS</p><h2 id="faq-title">よくある質問</h2></div>
+    <div class="faq-list">
+      <details><summary>何年もバスケをしていなくても参加できますか？<span aria-hidden="true">+</span></summary><p>はい。学生時代に部活やサークルでの経験があれば、ブランクの年数は問いません。経験者を対象としているため、初心者の方は参加対象外です。</p></details>
+      <details><summary>一人で参加しても大丈夫ですか？<span aria-hidden="true">+</span></summary><p>一人参加も歓迎しています。友だち同士でなくても参加できます。初めての方や女性も参加しやすい雰囲気づくりを大切にしています。</p></details>
+      <details><summary>参加費の事前決済は必要ですか？<span aria-hidden="true">+</span></summary><p>事前決済はありません。参加費は1回500円の都度払いです。</p></details>
+      <details><summary>いつ、どこで開催していますか？<span aria-hidden="true">+</span></summary><p>福岡中学校や市営体育館など、福岡市内で活動しています。開催日時と会場は日程によって異なるため、公式LINEで最新の練習日程をご確認ください。</p></details>
+      <details><summary>申込み後に予定が変わったら？<span aria-hidden="true">+</span></summary><p>当日でもキャンセル料無料です。参加できなくなった場合は、キャンセルの手続きをお願いします。</p></details>
+    </div>
+  </section>
+
+  <section class="final-section" aria-labelledby="final-title">
+    <div class="final-photo"><img src="assets/action1-900.webp" srcset="assets/action1-560.webp 560w, assets/action1-900.webp 787w" sizes="(max-width:700px) 100vw, 50vw" width="787" height="1400" alt="体育館でゲームを楽しむp.b.qのメンバー" loading="lazy" decoding="async"></div>
+    <div class="final-copy"><p class="eyebrow">SEE YOU AT THE GYM.</p><h2 id="final-title">「またやりたい」を、<br>今日の一歩に。</h2><p>次の予定に、バスケをひとつ。<br>まずは練習日程を見てみませんか。</p><a class="button button-light" href="https://lin.ee/rdgWlbC" target="_blank" rel="noopener">LINEで練習日程を見る <span aria-hidden="true">↗</span></a><p class="button-note">友だち追加 → 日程確認 → 体験申込み<br>20代社会人・経験者限定 / 1回500円</p></div>
+  </section>
+</main>
+<footer class="site-footer wrap"><div><a class="wordmark" href="#" aria-label="p.b.q ページの先頭へ">p.b.q</a><p>福岡の20代社会人バスケサークル</p></div><a class="instagram-link" href="https://www.instagram.com/p.b.q_fukuoka/" target="_blank" rel="noopener">練習の雰囲気をInstagramで見る <span aria-hidden="true">↗</span></a><small>© p.b.q</small></footer>
+<div class="mobile-cta" hidden><span>経験者・ブランク歓迎<small>20代社会人 / 1回500円</small></span><a href="https://lin.ee/rdgWlbC" target="_blank" rel="noopener">LINEで日程を見る <span aria-hidden="true">↗</span></a></div>
 <script>
-/* ============================================================
-   p.b.q 練習日 参加投票 ＋ 参加状況 ＋ 友達紹介（1画面）
-   フロント＝GitHub Pages / データ＝GAS API を fetch
-   ============================================================ */
-var LIFF_ID = "2011314745-16BXRKX0";
-var API     = "https://script.google.com/macros/s/AKfycbwFleZTrYMBT1ih-WcEpUvVc59dq8e2Bz5M1iLdVBoBB84FP_P--JQm55u2wytCww5-Kg/exec";
-var REFRESH_MS = 25000;
-
-var state = { userId:"", lineName:"", idToken:"",
-              practices:[], roster:[], mine:[], myGuests:[], myTrials:[],
-              selected:{}, guests:[], expanded:{}, guestForm:false,
-              hadEntries:false, busy:false, touched:false,
-              isMember:false, isAdmin:false, adminView:false, people:[],
-              monthlyLimit:4, canVote:true, unlimited:false, myRemaining:{}, session:null,
-              mode:"", trialDay:"", trialForm:false };
-var refreshTimer = null;
-function qparam(k){ try{ return new URLSearchParams(location.search).get(k) || ""; }catch(e){ return ""; } }
-function hasAdminParam(){ return qparam('admin') === '1'; }
-function isTrialMode(){ return qparam('mode') === 'trial'; }
-
-function saveSnapshot(){
-  try{ localStorage.setItem('pbq_snap', JSON.stringify({
-    practices: state.practices, roster: state.roster, mine: state.mine, myGuests: state.myGuests, ts: Date.now()
-  })); }catch(e){}
+// Show the mobile shortcut after the introduction; the in-page links work without JS.
+if ('IntersectionObserver' in window) {
+  const shortcut = document.querySelector('.mobile-cta');
+  new IntersectionObserver(([entry]) => {
+    shortcut.hidden = entry.isIntersecting || entry.boundingClientRect.top > 0;
+  }).observe(document.querySelector('.hero-stage'));
 }
-function loadSnapshot(){
-  try{
-    var s = JSON.parse(localStorage.getItem('pbq_snap') || 'null');
-    if (s && s.practices && s.practices.length && (Date.now() - s.ts) < 20*60*1000) return s;
-  }catch(e){}
-  return null;
-}
-
-function q(id){ return document.getElementById(id); }
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
-  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function showMsg(t,cls){ q('msg').innerHTML = t ? '<div class="msg '+(cls||'')+'">'+esc(t)+'</div>' : ''; if(t) window.scrollTo(0,0); }
-function two(n){ return ('0'+n).slice(-2); }
-
-function apiGet(params){
-  var qs = Object.keys(params).map(function(k){
-    return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
-  return fetch(API + '?' + qs, { method:'GET' }).then(function(r){ return r.json(); });
-}
-function apiPost(body){
-  return fetch(API, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-    body: JSON.stringify(body) }).then(function(r){ return r.json(); });
-}
-function handleAuthFail(d){ if (d && d.relogin){ try{ liff.login(); }catch(e){} return true; } return false; }
-
-/* ---------------- 起動 ---------------- */
-function boot(){
-  if (typeof liff === 'undefined'){
-    showMsg('LINEの読み込みに失敗しました。通信環境を確認して開き直してください。','err'); return;
-  }
-  liff.init({ liffId: LIFF_ID })
-    .then(function(){
-      if (!liff.isLoggedIn()){ liff.login(); return null; }
-      return liff.getProfile();
-    })
-    .then(function(p){
-      if (!p) return;
-      state.userId   = p.userId;
-      state.lineName = p.displayName || "";
-      try { state.idToken = liff.getIDToken() || ""; } catch(e){ state.idToken = ""; }
-      if (isTrialMode()){ state.mode = 'trial'; state.trialDay = qparam('day'); }
-      start();
-    })
-    .catch(function(e){
-      showMsg('LINE初期化エラー: ' + (e && e.message ? e.message : e) + '\nLINEアプリ内から開き直してください。','err');
-    });
-}
-
-var APP_VERSION = 'v3.1 (09/11)';
-
-var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
-            pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
-
-function sesTagHtml(){
-  if (!state.session) return '';
-  var m = SES[state.session];
-  return '<div class="sesbar"><button class="back" onclick="clearSession()">← 部を変える</button>'
-       + '<span class="sestag ' + state.session + '">' + (state.session === 'am' ? '☀' : '🌙') + ' ' + m.label + '</span></div>';
-}
-
-function renderHead_(){
-  var name = '<div class="who"><span class="ball"></span><div>あなた：<b>' + esc(state.lineName) + '</b> さん<br>LINEアカウントで自動判別しています</div></div>';
-  if (state.mode === 'trial'){
-    q('head').innerHTML =
-      '<div class="hero"><span class="ballmark"></span><span class="kicker">FIRST TIME</span>' +
-      '<h1>体験に<em>申し込む</em></h1><span class="seam"></span>' +
-      '<p class="sub">行きたい日を<b>1つ</b>選んで送信してください。体験枠には限りがあり、満席の日は選べません。<br>' +
-      '送信すると当日の持ち物・流れをLINEにお送りします。</p>' + name +
-      '<div class="refline"><span class="ver">' + APP_VERSION + '</span></div></div>';
-    return;
-  }
-  q('head').innerHTML =
-    '<div class="hero"><span class="ballmark"></span><span class="kicker">p.b.q FUKUOKA</span>' +
-    '<h1>練習日に<em>投票</em>する</h1><span class="seam"></span>' +
-    '<p class="sub">行ける日を<b>すべて</b>選んで送信。満席の日はキャンセル待ちになり、空きが出たら先着順にLINEで通知します。</p>' +
-    '<p class="sub" id="limit-lead"></p>' + name +
-    '<div class="refline"><span class="live"><span class="dot" id="dot"></span><span id="fresh">読み込み中…</span>' +
-    '<span class="ver">' + APP_VERSION + '</span></span>' +
-    '<button id="refreshBtn">更新</button></div></div>';
-  var rb = q('refreshBtn');
-  if (rb) rb.addEventListener('click', function(){ silentRefresh(true); });
-}
-
-function start(){
-  renderHead_();
-  document.addEventListener('visibilitychange', function(){ if (!document.hidden) silentRefresh(false); });
-
-  var snap = loadSnapshot();
-  if (snap){
-    state.practices = snap.practices; state.roster = snap.roster;
-    state.mine = snap.mine || []; state.myGuests = snap.myGuests || [];
-    if (state.mode !== 'trial') seedFromServer();
-    render();
-    var f = q('fresh'); if (f) f.textContent = '最新に更新中…';
-  }
-  loadAll();
-}
-
-function seedFromServer(){
-  state.hadEntries = (state.mine.length > 0) || (state.myGuests.length > 0);
-  if (state.touched) return;
-  state.selected = {};
-  state.mine.forEach(function(m){ state.selected[m.practiceId] = true; });
-  state.guests = [];
-  var _unusedGuests = (state.myGuests || []).map(function(g){
-    return { name:g.name, age:g.age, gender:g.gender, practiceId:g.practiceId };
-  });
-}
-
-/* ---------------- データ取得 ---------------- */
-function loadAll(){
-  apiGet({ api:'bootstrap', userId: state.userId, name: state.lineName, idToken: state.idToken })
-    .then(function(d){
-      if (!d.ok){ if (handleAuthFail(d)) return; markLive(false); showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
-      state.practices = d.practices; state.roster = d.roster;
-      state.mine = d.mine || []; state.myGuests = d.myGuests || []; state.myTrials = d.myTrials || [];
-      state.isMember = !!d.isMember; state.isAdmin = !!d.isAdmin;
-      state.monthlyLimit = Number(d.monthlyLimit) > 0 ? Number(d.monthlyLimit) : 4;
-      state.canVote = d.canVote !== false;
-      state.unlimited = d.unlimited === true;
-      state.myRemaining = d.myRemaining || {};
-      if (state.isAdmin && hasAdminParam() && !state.adminViewInit){ state.adminViewInit = true; state.adminView = true; loadAdmin(); }
-      seedFromServer();
-      markLive(true);
-      render();
-      saveSnapshot();
-      scheduleRefresh();
-    })
-    .catch(function(e){ markLive(false); showMsg('通信エラー: ' + e, 'err'); scheduleRefresh(); });
-}
-
-/* ---------------- 管理モード（運営のみ） ---------------- */
-function openAdmin(){ state.adminView = true; loadAdmin(); render(); }
-function closeAdmin(){ state.adminView = false; renderHead_(); markLive(true); render(); }
-function loadAdmin(){
-  apiGet({ api:'admin_list', userId: state.userId, idToken: state.idToken })
-    .then(function(d){
-      if (!d.ok){ showMsg('管理データ取得に失敗: ' + (d.error||''), 'err'); return; }
-      state.people = d.people || [];
-      if (state.adminView) render();
-    })
-    .catch(function(e){ showMsg('通信エラー: ' + e, 'err'); });
-}
-function setTier(uid, tier, btn){
-  if (btn){ btn.disabled = true; btn.textContent = '変更中…'; }
-  apiPost({ action:'set_tier', userId: state.userId, idToken: state.idToken, targetUid: uid, tier: tier })
-    .then(function(d){
-      if (!d.ok) throw new Error(d.error || '変更できませんでした');
-      state.people = d.people || state.people;
-      renderAdmin();
-    })
-    .catch(function(e){ showMsg(String(e.message || e), 'err'); renderAdmin(); });
-}
-
-function setMemberFlag(uid, value, btn){
-  if (btn){ btn.disabled = true; btn.textContent = '…'; }
-  apiPost({ action:'set_member', userId: state.userId, idToken: state.idToken, targetUid: uid, value: value })
-    .then(function(d){
-      if (!d.ok){ showMsg('変更に失敗: ' + (d.error||''), 'err'); if(btn) btn.disabled=false; return; }
-      state.people = d.people || state.people;
-      render();
-    })
-    .catch(function(e){ showMsg('通信エラー: ' + e, 'err'); if(btn) btn.disabled=false; });
-}
-function renderAdmin(){
-  var groups = [
-    { key:'trial',  title:'体験者・未設定' },
-    { key:'semi',   title:'準メンバー' },
-    { key:'member', title:'メンバー' }
-  ];
-  function tierBtn(p, tier, label, cls){
-    if (p.tier === tier) return '<span class="adbtn" style="opacity:.4;pointer-events:none">' + label + '</span>';
-    return '<button class="adbtn ' + cls + '" onclick="setTier(\'' + p.uid + '\', \'' + tier + '\', this)">' + label + '</button>';
-  }
-  function rowHtml(p){
-    return '<div class="adrow"><div class="adcol"><div class="adnm">' + esc(p.name || '(名前未取得)') + '</div>'
-      + '<div class="admeta">初回 ' + esc(p.first || '—') + '　体験 ' + p.trials + '回　現在：' + esc(p.tierLabel || p.tier) + '</div></div>'
-      + '<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">'
-      +   tierBtn(p, 'trial',  '体験',   'back')
-      +   tierBtn(p, 'semi',   '準',     'make')
-      +   tierBtn(p, 'member', 'メンバー', 'make')
-      + '</div></div>';
-  }
-  q('head').innerHTML = '<h1>🔧 会員種別の管理</h1>'
-    + '<p class="sub">体験／準メンバー／メンバーを切り替えます。変更するとリッチメニューが切り替わり、本人にお知らせが届きます。<br>'
-    + '体験→準メンバーは初参加日の21時、準メンバー→メンバーは毎月24日22時に自動で上がります。</p>'
-    + '<button id="backBtn" class="refline" style="border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:#fff;font-weight:700">← フォームに戻る</button>';
-  q('backBtn').addEventListener('click', closeAdmin);
-  var h = '';
-  groups.forEach(function(g){
-    var list = state.people.filter(function(p){ return (p.tier || (p.member ? 'member' : 'trial')) === g.key; });
-    h += '<div class="gbox"><div class="gbox-h">' + g.title + '（' + list.length + '）</div>';
-    h += list.length ? list.map(rowHtml).join('') : '<div class="admeta" style="padding:8px 0">いません</div>';
-    h += '</div>';
-  });
-  q('root').innerHTML = h;
-  q('footer').style.display = 'none';
-}
-
-function silentRefresh(manual){
-  if (state.busy || state.guestForm || state.trialForm) return;
-  if (state.mode === 'trial'){ if (!manual) scheduleRefresh(); return; }
-  apiGet({ api:'roster', idToken: state.idToken })
-    .then(function(d){
-      if (d && d.ok && d.roster){
-        state.roster = d.roster;
-        var y = window.scrollY;
-        markLive(true); render();
-        window.scrollTo(0, y);
-        saveSnapshot();
-      } else { markLive(false); }
-      if (!manual) scheduleRefresh();
-    })
-    .catch(function(){ markLive(false); if (!manual) scheduleRefresh(); });
-  if (manual) scheduleRefresh();
-}
-function scheduleRefresh(){
-  if (state.mode === 'trial') return;
-  clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(function(){
-    if (document.hidden || state.busy || state.guestForm){ scheduleRefresh(); return; }
-    silentRefresh(false);
-  }, REFRESH_MS);
-}
-function markLive(ok){
-  var dot = q('dot'); if (dot) dot.className = 'dot' + (ok ? '' : ' off');
-  var f = q('fresh'); if (!f) return;
-  var t = new Date();
-  f.textContent = (ok ? '自動更新中（約' + (REFRESH_MS/1000) + '秒）・' : '更新失敗・') +
-    two(t.getHours()) + ':' + two(t.getMinutes());
-}
-
-/* ---------------- 描画 ---------------- */
-var INVITE_URL = 'https://lin.ee/QPlvfJ1';
-
-function inviteBoxHtml(){
-  return '<div class="gbox"><div class="gbox-h">友達を誘うときは</div>'
-    + '<p class="gbox-sub">下のリンクを送ってください。お友達が<b>p.b.qの公式LINEを友だち追加</b>すると、'
-    + 'メニューから体験に申し込めます。申込画面で<b>紹介者のお名前</b>を入れてもらってください。'
-    + '（体験枠は各日わずかです）</p>'
-    + '<div style="padding:0 14px 14px">'
-    +   '<div id="inv-url" style="font-size:13px;color:var(--sub);word-break:break-all;background:#f7f7f9;border-radius:8px;padding:11px 12px;text-align:center;font-weight:700">'
-    +     esc(INVITE_URL) + '</div>'
-    +   '<button id="inv-copy" onclick="copyInvite(this)" style="width:100%;margin-top:8px;padding:12px;border:0;border-radius:10px;background:var(--accent,#FF5A4E);color:#fff;font-size:14px;font-weight:800">'
-    +     'リンクをコピー</button>'
-    + '</div></div>';
-}
-
-function copyInvite(btn){
-  function done(ok){
-    if (!btn) return;
-    btn.textContent = ok ? '✓ コピーしました' : 'コピーできませんでした';
-    btn.style.background = ok ? '#2e9e5b' : '#999';
-    setTimeout(function(){ btn.textContent = 'リンクをコピー'; btn.style.background = ''; }, 1800);
-  }
-  // LINEアプリ内ブラウザでは clipboard API が使えないことがあるので、両方試す
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(INVITE_URL).then(function(){ done(true); }, function(){ done(fallbackCopy()); });
-      return;
-    }
-  } catch(e){}
-  done(fallbackCopy());
-}
-
-function fallbackCopy(){
-  try {
-    var ta = document.createElement('textarea');
-    ta.value = INVITE_URL;
-    ta.setAttribute('readonly','');
-    ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select(); ta.setSelectionRange(0, ta.value.length);
-    var ok = document.execCommand('copy');
-    document.body.removeChild(ta);
-    return ok;
-  } catch(e){ return false; }
-}
-
-function selectedCount(){ var n = 0; for (var k in state.selected) if (state.selected[k]) n++; return n; }
-function remainingPicks(){ return Math.max(0, state.monthlyLimit - selectedCount()); }
-
-function pById(pid){ for (var i=0;i<state.practices.length;i++) if (state.practices[i].id===pid) return state.practices[i]; return null; }
-function rosterFor(pid){ for (var i=0;i<state.roster.length;i++) if (state.roster[i].id===pid) return state.roster[i]; return null; }
-function mineFor(pid){ for (var i=0;i<state.mine.length;i++) if (state.mine[i].practiceId===pid) return state.mine[i]; return null; }
-function guestStatusOf(g){
-  for (var i=0;i<state.myGuests.length;i++){
-    var m = state.myGuests[i];
-    if (m.practiceId===g.practiceId && m.name===g.name) return m;
-  }
-  return null;
-}
-
-function nameList(arr){
-  if (!arr || !arr.length) return '<li class="none">まだいません</li>';
-  return arr.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('');
-}
-
-function sessionOf(p){
-  if (!p) return 'pm';
-  if (p.session === 'am' || p.session === 'pm') return p.session;
-  // GASが旧版で session を返さない場合でも動くようにする
-  var m = String(p.time || '').match(/(\d{1,2})\s*[:：]/);
-  if (m) return Number(m[1]) < 12 ? 'am' : 'pm';
-  if (/朝/.test(String(p.place || '') + String(p.time || ''))) return 'am';
-  return 'pm';
-}
-function practicesIn(ses){ return state.practices.filter(function(p){ return sessionOf(p) === ses; }); }
-function pickSession(ses){ state.session = ses; showMsg('',''); window.scrollTo(0,0); renderHead_(); render(); }
-function clearSession(){ state.session = null; showMsg('',''); window.scrollTo(0,0); renderHead_(); render(); }
-
-/** その部で選んでいる日数 */
-function selectedInSession(ses){
-  var n = 0;
-  practicesIn(ses).forEach(function(p){ if (state.selected[p.id]) n++; });
-  return n;
-}
-
-function renderSessionPicker(){
-  var mine = {};
-  state.mine.forEach(function(m){ mine[m.practiceId] = true; });
-  function card(ses){
-    var list = practicesIn(ses);
-    var m = SES[ses];
-    var chosen = 0;
-    list.forEach(function(p){ if (mine[p.id]) chosen++; });
-    return '<button class="sescard ' + ses + '" onclick="pickSession(\'' + ses + '\')">'
-      + '<div class="st">' + m.kicker + '</div>'
-      + '<div class="sh">' + (ses === 'am' ? '☀ ' : '🌙 ') + m.label + '</div>'
-      + '<div class="sd">' + esc(m.note) + '<br>今月 ' + list.length + ' 日</div>'
-      + '<span class="sn">' + (chosen > 0 ? '投票済み ' + chosen + '日' : (list.length ? 'ここから投票' : '今月は開催なし')) + '</span>'
-      + '<span class="go">›</span></button>';
-  }
-  q('root').innerHTML = '<div class="seswrap">' + card('am') + card('pm') + '</div>'
-    + '<p class="seshint">朝の部・夜の部それぞれで、月に'
-    + (state.unlimited ? 'すべての日' : state.monthlyLimit + '回まで') + '参加できます。<br>あとから切り替えられます。</p>';
-  q('footer').style.display = 'none';
-}
-
-function render(){
-  if (state.adminView){ renderAdmin(); return; }
-  if (state.mode === 'trial'){ renderTrial(); return; }
-  if (!state.practices.length){
-    q('root').innerHTML = '<div class="msg err">現在、募集中の練習日がありません。</div>';
-    q('footer').style.display = 'none';
-    return;
-  }
-  if (!state.session){ renderSessionPicker(); return; }
-  var inSes = practicesIn(state.session);
-  var html = sesTagHtml();
-  if (!inSes.length){
-    q('root').innerHTML = html + '<div class="msg err">' + SES[state.session].label + 'は今月の開催がありません。「部を変える」から選び直してください。</div>';
-    q('footer').style.display = 'none';
-    return;
-  }
-  inSes.forEach(function(p){
-    var r = rosterFor(p.id) || { members:[], membersWait:[], trials:[], capMembers:p.capacity };
-    var mine = mineFor(p.id);
-    // 参加者側ではメンバー／準メンバーを区別しない（運営の内部管理のみ）
-    var confList = r.members || r.confirmed || [];
-    var waitList = r.membersWait || r.waitlist || [];
-    var conf = confList.length, wait = waitList.length;
-    var cap = r.capMembers || ((r.capacity || 0) + (r.capSemi || 0)) || p.capacity;
-    var trials = (r.trials || []), tn = trials.length;
-    var sel = !!state.selected[p.id];
-    var open = !!state.expanded[p.id];
-
-    var badge;
-    // 空き判定は「自分が入れる枠」で見る（種別は画面に出さない）
-    var left = state.myRemaining[p.id];
-    if (left === undefined) left = cap - conf;
-    if (mine && mine.status === 'confirmed')      badge = '<span class="badge b-mine">投票済み・参加確定</span>';
-    else if (mine && mine.status === 'waitlist')  badge = '<span class="badge b-mine">キャンセル待ち ' + mine.waitlistPos + '番目</span>';
-    else if (left <= 0)                           badge = '<span class="badge b-full">満席（チェックでキャンセル待ちに登録）</span>';
-    else                                          badge = '<span class="badge b-open">受付中</span>';
-
-    var pct = Math.min(100, Math.round(conf / cap * 100));
-    var tp = [p.time, p.place].filter(function(s){ return s; }).join(' ・ ');
-
-    html += '<div class="day ' + (sel ? 'sel' : '') + '">'
-      + '<div class="pick" onclick="toggle(\'' + p.id + '\')">'
-      +   '<div class="cb">' + (sel ? '✓' : '') + '</div>'
-      +   '<div class="body">'
-      +     '<div class="d">' + esc(p.date || p.label) + '</div>'
-      +     (tp ? '<div class="tp">' + esc(tp) + '</div>' : '')
-      +     '<div class="meta">参加確定 ' + conf + ' / ' + cap + ' 名' + (wait > 0 ? '　・　待ち ' + wait + ' 名' : '') + (tn > 0 ? '　・　体験 ' + tn + ' 名' : '') + '</div>'
-      +     '<div class="bar"><i style="width:' + pct + '%"></i></div>'
-      +     '<div>' + badge + '</div>'
-      +   '</div>'
-      + '</div>'
-      + '<button class="rtoggle" aria-expanded="' + (open ? 'true' : 'false') + '" onclick="toggleExpand(\'' + p.id + '\')">'
-      +   '<span>参加者リスト（確定 ' + conf + (wait > 0 ? ' ／ 待ち ' + wait : '') + (tn > 0 ? ' ／ 体験 ' + tn : '') + '）</span><span class="arw">▼</span>'
-      + '</button>'
-      + '<div class="rpanel" id="rp-' + p.id + '" ' + (open ? '' : 'hidden') + '>'
-      +   '<div class="rgrp"><div class="rt">参加確定（' + conf + ' / ' + cap + '）</div><ol>' + nameList(confList) + '</ol></div>'
-      +   (wait > 0 ? '<div class="rgrp w"><div class="rt">キャンセル待ち（' + wait + '・先着順）</div><ol>' + waitList.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol></div>' : '')
-      +   (tn > 0 ? '<div class="rgrp"><div class="rt">体験（' + tn + ' / ' + (r.capTrial || p.capTrial || 0) + '）</div><ol>' + trials.map(function(n){ return '<li>' + esc(n || '(名前なし)') + '</li>'; }).join('') + '</ol></div>' : '')
-      + '</div>'
-      + '</div>';
-  });
-
-  html += inviteBoxHtml();
-  if (state.isAdmin){
-    html += '<div style="text-align:center;margin-top:18px"><button onclick="openAdmin()" '
-      + 'style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--sub);font-weight:700">🔧 メンバー管理</button></div>';
-  }
-
-  q('root').innerHTML = html;
-  var ll = q('limit-lead');
-  if (ll){
-    if (!state.session) ll.innerHTML = '';
-    else if (state.unlimited) ll.innerHTML = '運営アカウントのため、<b>すべての練習日</b>を選べます。現在 <b>' + selectedInSession(state.session) + '日</b> 選択中。';
-    else {
-      var used = selectedInSession(state.session);
-      ll.innerHTML = '<b>' + SES[state.session].label + '</b>に参加できるのは月に <b>' + state.monthlyLimit
-        + '回</b>まで。現在 <b>' + used + '回</b> 選択中（残り ' + Math.max(0, state.monthlyLimit - used) + '回）。';
-    }
-  }
-  q('footer').style.display = 'block';
-  updateSubmitBtn();
-  if (state.guestForm){ var n = q('gf-name'); if (n) n.focus(); }
-}
-
-function guestSectionHtml(){
-  var h = '<div class="gbox"><div class="gbox-h">友達を連れていく</div>'
-    + '<p class="gbox-sub">友達の名前・年齢・性別と、参加する練習日を選んで追加します。'
-    + '複数日来るなら、日ごとに1回ずつ追加してください。会費とマナーは紹介者がフォローをお願いします。</p>';
-
-  state.guests.forEach(function(g, idx){
-    var p = pById(g.practiceId);
-    var dayLabel = p ? (p.date + (p.place ? '　' + p.place : '')) : g.practiceId;
-    var gs = guestStatusOf(g);
-    var st = !gs ? '未送信（送信で登録）'
-      : (gs.status === 'waitlist' ? 'キャンセル待ち ' + gs.waitlistPos + '番目' : '参加確定');
-    var wc = (gs && gs.status === 'waitlist') ? ' wait' : '';
-    h += '<div class="grow"><div class="gcol">'
-      +   '<div class="gnm">' + esc(g.name) + '（' + esc(g.age) + '）' + esc(g.gender) + '</div>'
-      +   '<div class="gmeta' + wc + '">' + esc(dayLabel) + ' — ' + st + '</div>'
-      + '</div><button class="grm" onclick="removeGuest(' + idx + ')">×</button></div>';
-  });
-
-  if (state.guestForm){
-    var opts = state.practices.map(function(p){
-      return '<option value="' + esc(p.id) + '">' + esc(p.date + (p.place ? '　' + p.place : '')) + '</option>';
-    }).join('');
-    h += '<div class="gform">'
-      + '<input id="gf-name" placeholder="友達の名前" autocomplete="off">'
-      + '<div class="row"><input id="gf-age" class="age" type="number" inputmode="numeric" placeholder="年齢">'
-      + '<select id="gf-gender" class="gen"><option>男性</option><option>女性</option><option>その他</option></select></div>'
-      + '<select id="gf-day">' + opts + '</select>'
-      + '<div class="gform-btns"><button class="add" onclick="addGuest()">追加する</button>'
-      + '<button onclick="closeGuestForm()">やめる</button></div>'
-      + '</div>';
-  } else {
-    h += '<button class="gadd" onclick="openGuestForm()">＋ 友達を追加</button>';
-  }
-  h += '</div>';
-  return h;
-}
-
-function toggleExpand(pid){
-  state.expanded[pid] = !state.expanded[pid];
-  var panel = q('rp-' + pid);
-  if (panel){
-    panel.hidden = !state.expanded[pid];
-    var btn = panel.previousElementSibling;
-    if (btn) btn.setAttribute('aria-expanded', state.expanded[pid] ? 'true' : 'false');
-  }
-}
-
-/* 友達の追加・削除 */
-function openGuestForm(){ state.guestForm = true; render(); }
-function closeGuestForm(){ state.guestForm = false; showMsg('',''); render(); }
-function addGuest(){
-  var name = (q('gf-name').value || '').trim();
-  var age  = (q('gf-age').value || '').trim();
-  var gender = q('gf-gender').value;
-  var pid = q('gf-day').value;
-  if (!name){ showMsg('友達の名前を入力してください。', 'err'); return; }
-  if (!age){ showMsg('友達の年齢を入力してください（だいたいでOK）。', 'err'); return; }
-  if (!pid){ showMsg('参加する練習日を選んでください。', 'err'); return; }
-  if (state.guests.some(function(g){ return g.practiceId === pid && g.name === name; })){
-    showMsg('その練習日に同じ名前の友達がすでに登録されています。', 'err'); return;
-  }
-  state.guests.push({ name: name, age: age, gender: gender, practiceId: pid });
-  state.touched = true;
-  state.guestForm = false;
-  showMsg('', '');
-  render();
-}
-function removeGuest(idx){
-  state.guests.splice(idx, 1);
-  state.touched = true;
-  render();
-}
-
-var INVITE_URL = 'https://lin.ee/QPlvfJ1';
-
-function inviteBoxHtml(){
-  return '<div class="gbox"><div class="gbox-h">友達を誘うときは</div>'
-    + '<p class="gbox-sub">下のリンクを送ってください。お友達が<b>p.b.qの公式LINEを友だち追加</b>すると、'
-    + 'メニューから体験に申し込めます。申込画面で<b>紹介者のお名前</b>を入れてもらってください。'
-    + '（体験枠は各日わずかです）</p>'
-    + '<div style="padding:0 14px 14px">'
-    +   '<div id="inv-url" style="font-size:13px;color:var(--sub);word-break:break-all;background:#f7f7f9;border-radius:8px;padding:11px 12px;text-align:center;font-weight:700">'
-    +     esc(INVITE_URL) + '</div>'
-    +   '<button id="inv-copy" onclick="copyInvite(this)" style="width:100%;margin-top:8px;padding:12px;border:0;border-radius:10px;background:var(--accent,#FF5A4E);color:#fff;font-size:14px;font-weight:800">'
-    +     'リンクをコピー</button>'
-    + '</div></div>';
-}
-
-function copyInvite(btn){
-  function done(ok){
-    if (!btn) return;
-    btn.textContent = ok ? '✓ コピーしました' : 'コピーできませんでした';
-    btn.style.background = ok ? '#2e9e5b' : '#999';
-    setTimeout(function(){ btn.textContent = 'リンクをコピー'; btn.style.background = ''; }, 1800);
-  }
-  // LINEアプリ内ブラウザでは clipboard API が使えないことがあるので、両方試す
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(INVITE_URL).then(function(){ done(true); }, function(){ done(fallbackCopy()); });
-      return;
-    }
-  } catch(e){}
-  done(fallbackCopy());
-}
-
-function fallbackCopy(){
-  try {
-    var ta = document.createElement('textarea');
-    ta.value = INVITE_URL;
-    ta.setAttribute('readonly','');
-    ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select(); ta.setSelectionRange(0, ta.value.length);
-    var ok = document.execCommand('copy');
-    document.body.removeChild(ta);
-    return ok;
-  } catch(e){ return false; }
-}
-
-function selectedCount(){ return Object.keys(state.selected).filter(function(k){ return state.selected[k]; }).length; }
-function updateSubmitBtn(){
-  var btn = q('submitBtn');
-  if (selectedCount() === 0 && state.hadEntries){
-    btn.textContent = 'すべて取り消して送信'; btn.classList.add('warn');
-  } else {
-    btn.textContent = 'この内容で送信'; btn.classList.remove('warn');
-  }
-}
-function toggle(pid){
-  var ses = sessionOf(pById(pid));
-  if (!state.unlimited && !state.selected[pid] && selectedInSession(ses) >= state.monthlyLimit){
-    showMsg(SES[ses].label + 'に参加できるのは月に' + state.monthlyLimit + '回までです。ほかの日のチェックを外してから選んでください。','err');
-    return;
-  } state.touched = true; state.selected[pid] = !state.selected[pid]; render(); }
-
-function renderResult(results){
-  var ok = results.filter(function(r){ return r.status==='confirmed'; });
-  var wait = results.filter(function(r){ return r.status==='waitlist'; });
-  var cxl = results.filter(function(r){ return r.status==='cancelled'; });
-  var h = '<div class="result"><h2>✅ 送信しました</h2>';
-  if (ok.length)   h += '<div class="grp ok"><div class="t">参加確定</div><ul>' + ok.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul></div>';
-  if (wait.length) h += '<div class="grp wait"><div class="t">キャンセル待ち（定員オーバーのため）</div><ul>' + wait.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul><div class="note">空きが出た時点で、先着順にLINEで「参加できます」の通知が届きます。友達の分は紹介者に通知します。</div></div>';
-  if (cxl.length)  h += '<div class="grp cxl"><div class="t">取り消し</div><ul>' + cxl.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul></div>';
-  if (!ok.length && !wait.length && !cxl.length) h += '<div class="note">日程が選択されていません（＝すべて取り消し）。</div>';
-  h += '<div class="note">同じ内容をLINEのトークにも送りました。予定が変わったら、選び直して再送信してください。</div></div>';
-  q('result').innerHTML = h;
-  window.scrollTo(0,0);
-}
-
-/* ---------------- 体験申し込みモード ---------------- */
-function trialLeft(pid){
-  var r = rosterFor(pid), p = pById(pid);
-  if (!p) return 0;
-  var used = r ? (r.trials ? r.trials.length : 0) : 0;
-  return Math.max(0, (p.capTrial || 0) - used);
-}
-function myTrial(){ return (state.myTrials && state.myTrials[0]) || null; }
-
-function renderTrial(){
-  if (!state.practices.length){
-    q('root').innerHTML = '<div class="msg err">現在、募集中の練習日がありません。しばらくしてから開き直してください。</div>';
-    q('footer').style.display = 'none';
-    return;
-  }
-  var mt = myTrial();
-  var h = '';
-
-  if (mt && !state.trialForm){
-    var mp = pById(mt.practiceId);
-    var dl = mp ? (mp.date + '　' + mp.time + (mp.place ? '　' + mp.place : '')) : mt.practiceId;
-    h += '<div class="result"><h2>体験を申し込み済みです</h2>'
-      + '<div class="grp ok"><div class="t">' + esc(dl) + '</div>'
-      + '<ul><li>' + esc(mt.name) + '（' + esc(mt.age) + '）' + esc(mt.gender) + '</li></ul></div>'
-      + '<div class="note">当日の持ち物・流れはLINEのトークに送っています。</div>'
-      + '<div class="gform-btns" style="margin-top:12px">'
-      +   '<button class="add" onclick="openTrialForm()">日程・内容を変更</button>'
-      +   '<button onclick="cancelTrial()">申し込みを取り消す</button>'
-      + '</div></div>';
-    if (state.isAdmin){
-      h += '<div style="text-align:center;margin-top:18px"><button onclick="openAdmin()" '
-        + 'style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--sub);font-weight:700">🔧 メンバー管理</button></div>';
-    }
-    q('root').innerHTML = h;
-    q('footer').style.display = 'none';
-    return;
-  }
-
-  if (!state.session){ renderSessionPicker(); return; }
-  h += sesTagHtml();
-
-  var preset = state.trialDay || (mt ? mt.practiceId : '');
-  var opts = practicesIn(state.session).map(function(p){
-    var left = trialLeft(p.id);
-    var tp = [p.time, p.place].filter(function(s){return s;}).join(' ');
-    var lbl = p.date + (tp ? '　' + tp : '');
-    if (left <= 0) return '<option value="' + esc(p.id) + '" disabled>' + esc(lbl) + '（満席）</option>';
-    var selAttr = (p.id === preset) ? ' selected' : '';
-    return '<option value="' + esc(p.id) + '"' + selAttr + '>' + esc(lbl) + '（体験枠 残り' + left + '）</option>';
-  }).join('');
-
-  var nm = (mt && mt.name) || state.lineName || '';
-  var ag = (mt && mt.age) || '';
-  var gd = (mt && mt.gender) || '男性';
-  var rf = (mt && mt.referrer) || '';
-  function genOpt(v){ return '<option' + (v===gd?' selected':'') + '>' + v + '</option>'; }
-
-  if (!practicesIn(state.session).length){
-    h += '<div class="msg err">' + SES[state.session].label + 'は今月の開催がありません。「部を変える」から選び直してください。</div>';
-    q('root').innerHTML = h;
-    q('footer').style.display = 'none';
-    return;
-  }
-
-  h += '<div class="gbox">'
-    + '<div class="gbox-h">' + (mt ? '体験の内容を変更' : '体験に申し込む') + '</div>'
-    + '<p class="gbox-sub">行きたい日を選び、お名前・年齢・性別を入力して送信してください。'
-    + 'メンバーの方に誘われた場合は、<b>紹介者のお名前</b>も入れてください（任意）。'
-    + '当日は開始時間までに体育館の正面入り口に集合、参加費は500円です。</p>'
-    + '<div class="gform">'
-    +   '<select id="tr-day">' + opts + '</select>'
-    +   '<input id="tr-name" placeholder="お名前" autocomplete="name" value="' + esc(nm) + '">'
-    +   '<div class="row"><input id="tr-age" class="age" type="number" inputmode="numeric" placeholder="年齢（だいたいでOK）" value="' + esc(ag) + '">'
-    +   '<select id="tr-gender" class="gen">' + genOpt('男性') + genOpt('女性') + genOpt('その他') + '</select></div>'
-    +   '<input id="tr-ref" placeholder="紹介者のお名前（任意・メンバーに誘われた方）" value="' + esc(rf) + '">'
-    +   '<div class="gform-btns">'
-    +     '<button class="add" onclick="submitTrial()">' + (mt ? 'この内容で変更' : '体験を申し込む') + '</button>'
-    +     (mt ? '<button onclick="closeTrialForm()">やめる</button>' : '')
-    +   '</div>'
-    + '</div></div>';
-
-  if (state.isAdmin){
-    h += '<div style="text-align:center;margin-top:18px"><button onclick="openAdmin()" '
-      + 'style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--sub);font-weight:700">🔧 メンバー管理</button></div>';
-  }
-
-  q('root').innerHTML = h;
-  q('footer').style.display = 'none';
-}
-
-function openTrialForm(){ state.trialForm = true; showMsg('',''); render(); }
-function closeTrialForm(){ state.trialForm = false; showMsg('',''); render(); }
-
-function submitTrial(){
-  if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
-  var pid = q('tr-day') ? q('tr-day').value : '';
-  var name = (q('tr-name') && q('tr-name').value || '').trim();
-  var age = (q('tr-age') && q('tr-age').value || '').trim();
-  var gender = q('tr-gender') ? q('tr-gender').value : '';
-  var referrer = (q('tr-ref') && q('tr-ref').value || '').trim();
-  if (!pid){ showMsg('体験に行きたい日を選んでください（満席の日は選べません）。','err'); return; }
-  if (!name){ showMsg('お名前を入力してください。','err'); return; }
-  if (!age){ showMsg('年齢を入力してください（だいたいでOK）。','err'); return; }
-  var btns = document.querySelectorAll('.gform-btns button');
-  for (var i=0;i<btns.length;i++){ btns[i].disabled = true; }
-  showMsg('送信中…','');
-  state.busy = true;
-  apiPost({ action:'submit_trial', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken,
-            practiceId: pid, name: name, age: age, gender: gender, referrer: referrer })
-    .then(function(res){
-      state.busy = false;
-      if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + (res.error||''),'err'); render(); return; }
-      if (res.full){ showMsg('その日は体験枠が満席です。別の日を選んでください。','err'); state.trialForm = true; loadAll(); return; }
-      state.trialForm = false;
-      showMsg('','');
-      q('result').innerHTML = '<div class="result"><h2>✅ 体験を申し込みました</h2>'
-        + '<div class="note">当日の持ち物・流れ・集合場所を、LINEのトークにお送りしました。ご確認ください。'
-        + '予定が変わったら、このページから変更・取り消しができます。</div></div>';
-      window.scrollTo(0,0);
-      loadAll();
-    })
-    .catch(function(e){ state.busy = false; showMsg('送信に失敗しました（通信）: ' + e,'err'); render(); });
-}
-
-function cancelTrial(){
-  var mt = myTrial();
-  if (!mt) return;
-  if (!window.confirm('体験の申し込みを取り消します。よろしいですか？')) return;
-  state.busy = true;
-  apiPost({ action:'submit_trial', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken,
-            practiceId: mt.practiceId, cancel: true })
-    .then(function(res){
-      state.busy = false;
-      if (!res.ok){ if (handleAuthFail(res)) return; showMsg('取り消しに失敗しました: ' + (res.error||''),'err'); return; }
-      showMsg('','');
-      q('result').innerHTML = '<div class="result"><h2>取り消しました</h2><div class="note">またいつでもお申し込みいただけます。</div></div>';
-      window.scrollTo(0,0);
-      loadAll();
-    })
-    .catch(function(e){ state.busy = false; showMsg('取り消しに失敗しました（通信）: ' + e,'err'); });
-}
-
-/* ---------------- 送信 ---------------- */
-q('submitBtn').addEventListener('click', function(){
-  if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
-  if (state.guestForm){ showMsg('友達の入力を「追加する」か「やめる」で確定してから送信してください。', 'err'); return; }
-  var ids = Object.keys(state.selected).filter(function(k){ return state.selected[k]; });
-  if (ids.length === 0 && state.hadEntries){
-    if (!window.confirm('あなたの参加と、連れていく友達の登録をすべて取り消します。よろしいですか？')) return;
-  }
-  var btn = q('submitBtn');
-  btn.disabled = true; btn.textContent = '送信中…'; state.busy = true;
-  apiPost({ action:'submit', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken,
-            practiceIds: ids })
-    .then(function(res){
-      state.busy = false; btn.disabled = false; updateSubmitBtn();
-      if (!res.ok){
-        if (handleAuthFail(res)) return;
-        showMsg('送信に失敗しました: ' + res.error + '\n\n最新の状態を読み直しました。画面のチェックが実際の登録内容です。', 'err');
-        state.touched = false; loadAll();      // 画面と実データのズレを防ぐ
-        return;
-      }
-      showMsg('', '');
-      renderResult(res.results);
-      apiPost({ action:'notify', lineUserId: state.userId, idToken: state.idToken, results: res.results }).catch(function(){});
-      state.touched = false;
-      loadAll();
-    })
-    .catch(function(e){
-      state.busy = false; btn.disabled = false; updateSubmitBtn();
-      showMsg('通信が途切れました。保存できているか確認するため、最新の状態を読み直します。\n画面のチェックが実際の登録内容です。', 'err');
-      state.touched = false; loadAll();
-    });
-});
-
-boot();
 </script>
 </body>
 </html>
