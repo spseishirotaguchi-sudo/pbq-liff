@@ -278,7 +278,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v3.1 (09/11)';
+var APP_VERSION = 'v3.2 (09/13)';
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
             pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
@@ -847,7 +847,7 @@ function renderProfile(){
     + '</p>'
     + '<div class="gform">'
     +   '<label>お名前（フルネーム）</label>'
-    +   '<input id="pf-name" placeholder="例：田口 勢士郎" autocomplete="name" value="' + esc(p.realName || '') + '">'
+    +   '<input id="pf-name" placeholder="例：田中 太郎" autocomplete="name" value="' + esc(p.realName || '') + '">'
     +   '<label>生年月日</label>'
     +   '<div class="bdrow">'
     +     '<input id="pf-y" class="y" type="number" inputmode="numeric" placeholder="1998" value="' + esc(by) + '"><em>年</em>'
