@@ -135,6 +135,13 @@
   .gform .row{display:flex;gap:10px}
   .gform .row .age{flex:1;min-width:0}
   .gform .row .gen{width:114px;flex:none}
+  .gform label{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:-4px}
+  .bdrow{display:flex;gap:8px;align-items:center}
+  .bdrow input{text-align:center;padding:13px 6px}
+  .bdrow input::-webkit-outer-spin-button,.bdrow input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .bdrow .y{flex:1.5;min-width:0}
+  .bdrow .m,.bdrow .d{flex:1;min-width:0}
+  .bdrow em{font-size:14px;font-weight:800;color:var(--ink-2);font-style:normal;flex:none}
   .gform-btns{display:flex;gap:10px}
   .gform-btns button{flex:1;padding:14px;border-radius:12px;font-size:14.5px;font-weight:900;
     border:1.5px solid var(--line);background:#fff;color:var(--navy)}
@@ -822,10 +829,15 @@ function renderProfile(){
   var p = state.myProfile || {};
   var wards = (state.wards && state.wards.length) ? state.wards
     : ['東区','博多区','中央区','南区','城南区','早良区','西区','福岡市外'];
-  var wardOpts = '<option value="">お住まいの区を選ぶ</option>' + wards.map(function(w){
+  var wardOpts = '<option value="">選んでください</option>' + wards.map(function(w){
     return '<option value="' + esc(w) + '"' + (p.ward === w ? ' selected' : '') + '>' + esc(w) + '</option>';
   }).join('');
   function genOpt(v){ return '<option' + (p.gender === v ? ' selected' : '') + '>' + v + '</option>'; }
+
+  var bd = String(p.birthday || '').split('-');
+  var by = bd[0] || '';
+  var bm = bd[1] ? String(Number(bd[1])) : '';
+  var bdd = bd[2] ? String(Number(bd[2])) : '';
 
   var done = state.hasProfile;
   var h = '<div class="gbox">'
@@ -834,9 +846,17 @@ function renderProfile(){
     + (done ? '' : '<b>回答すると、練習日の申し込みメニューが使えるようになります。</b>')
     + '</p>'
     + '<div class="gform">'
-    +   '<input id="pf-name" placeholder="お名前（フルネーム）" autocomplete="name" value="' + esc(p.realName || '') + '">'
-    +   '<input id="pf-bd" type="date" value="' + esc(p.birthday || '') + '">'
+    +   '<label>お名前（フルネーム）</label>'
+    +   '<input id="pf-name" placeholder="例：田口 勢士郎" autocomplete="name" value="' + esc(p.realName || '') + '">'
+    +   '<label>生年月日</label>'
+    +   '<div class="bdrow">'
+    +     '<input id="pf-y" class="y" type="number" inputmode="numeric" placeholder="1998" value="' + esc(by) + '"><em>年</em>'
+    +     '<input id="pf-m" class="m" type="number" inputmode="numeric" placeholder="4" value="' + esc(bm) + '"><em>月</em>'
+    +     '<input id="pf-d" class="d" type="number" inputmode="numeric" placeholder="15" value="' + esc(bdd) + '"><em>日</em>'
+    +   '</div>'
+    +   '<label>お住まいの区</label>'
     +   '<select id="pf-ward">' + wardOpts + '</select>'
+    +   '<label>性別</label>'
     +   '<select id="pf-gender">' + genOpt('男性') + genOpt('女性') + genOpt('その他') + '</select>'
     +   '<div class="gform-btns"><button class="add" onclick="submitProfile()">'
     +     (done ? 'この内容に変更する' : '回答して申し込みに進む') + '</button></div>'
@@ -850,11 +870,20 @@ function submitProfile(){
   if (state.profileBusy) return;
   if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
   var realName = (q('pf-name') && q('pf-name').value || '').trim();
-  var birthday = (q('pf-bd') && q('pf-bd').value || '').trim();
+  var yy = (q('pf-y') && q('pf-y').value || '').trim();
+  var mm = (q('pf-m') && q('pf-m').value || '').trim();
+  var dd = (q('pf-d') && q('pf-d').value || '').trim();
   var ward     = q('pf-ward') ? q('pf-ward').value : '';
   var gender   = q('pf-gender') ? q('pf-gender').value : '';
+
   if (!realName){ showMsg('お名前を入力してください。','err'); return; }
-  if (!birthday){ showMsg('生年月日を入力してください。','err'); return; }
+  if (!yy || !mm || !dd){ showMsg('生年月日を、年・月・日すべて入力してください。','err'); return; }
+  var ny = Number(yy), nm = Number(mm), nd = Number(dd);
+  var thisYear = new Date().getFullYear();
+  if (!(ny >= 1930 && ny <= thisYear)){ showMsg('生年月日の「年」は西暦4桁で入力してください（例：1998）。','err'); return; }
+  if (!(nm >= 1 && nm <= 12)){ showMsg('生年月日の「月」は1〜12で入力してください。','err'); return; }
+  if (!(nd >= 1 && nd <= 31)){ showMsg('生年月日の「日」は1〜31で入力してください。','err'); return; }
+  var birthday = ny + '-' + two(nm) + '-' + two(nd);
   if (!ward){ showMsg('お住まいの区を選んでください。','err'); return; }
 
   state.profileBusy = true;
