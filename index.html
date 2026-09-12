@@ -209,11 +209,13 @@ var state = { userId:"", lineName:"", idToken:"",
               hadEntries:false, busy:false, touched:false,
               isMember:false, isAdmin:false, adminView:false, people:[],
               monthlyLimit:4, canVote:true, unlimited:false, myRemaining:{}, session:null,
-              mode:"", trialDay:"", trialForm:false };
+              mode:"", trialDay:"", trialForm:false,
+              hasProfile:true, myProfile:null, wards:[], profileBusy:false };
 var refreshTimer = null;
 function qparam(k){ try{ return new URLSearchParams(location.search).get(k) || ""; }catch(e){ return ""; } }
 function hasAdminParam(){ return qparam('admin') === '1'; }
 function isTrialMode(){ return qparam('mode') === 'trial'; }
+function isProfileMode(){ return qparam('mode') === 'profile'; }
 
 function saveSnapshot(){
   try{ localStorage.setItem('pbq_snap', JSON.stringify({
@@ -261,6 +263,7 @@ function boot(){
       state.lineName = p.displayName || "";
       try { state.idToken = liff.getIDToken() || ""; } catch(e){ state.idToken = ""; }
       if (isTrialMode()){ state.mode = 'trial'; state.trialDay = qparam('day'); }
+      if (isProfileMode()){ state.mode = 'profile'; }
       start();
     })
     .catch(function(e){
@@ -282,6 +285,15 @@ function sesTagHtml(){
 
 function renderHead_(){
   var name = '<div class="who"><span class="ball"></span><div>あなた：<b>' + esc(state.lineName) + '</b> さん<br>LINEアカウントで自動判別しています</div></div>';
+  if (state.mode === 'profile' || !state.hasProfile){
+    q('head').innerHTML =
+      '<div class="hero"><span class="ballmark"></span><span class="kicker">WELCOME</span>' +
+      '<h1>はじめに<em>アンケート</em></h1><span class="seam"></span>' +
+      '<p class="sub">p.b.q への友だち追加ありがとうございます。<br>' +
+      '練習日の申し込みに進むために、はじめに4つだけ教えてください。<b>1分で終わります。</b></p>' + name +
+      '<div class="refline"><span class="ver">' + APP_VERSION + '</span></div></div>';
+    return;
+  }
   if (state.mode === 'trial'){
     q('head').innerHTML =
       '<div class="hero"><span class="ballmark"></span><span class="kicker">FIRST TIME</span>' +
@@ -341,6 +353,12 @@ function loadAll(){
       state.canVote = d.canVote !== false;
       state.unlimited = d.unlimited === true;
       state.myRemaining = d.myRemaining || {};
+      state.hasProfile = d.hasProfile !== false;
+      state.myProfile = d.myProfile || null;
+      state.wards = d.wards || [];
+      // アンケート未回答なら、どの画面から来ても回答画面に固定する
+      if (!state.hasProfile) state.mode = 'profile';
+      else if (state.mode === 'profile' && !isProfileMode()) state.mode = '';
       if (state.isAdmin && hasAdminParam() && !state.adminViewInit){ state.adminViewInit = true; state.adminView = true; loadAdmin(); }
       seedFromServer();
       markLive(true);
@@ -395,7 +413,12 @@ function renderAdmin(){
     return '<button class="adbtn ' + cls + '" onclick="setTier(\'' + p.uid + '\', \'' + tier + '\', this)">' + label + '</button>';
   }
   function rowHtml(p){
+    var prof = p.hasProfile
+      ? '<div class="admeta">' + esc(p.realName || '—') + '／' + esc(p.ward || '—')
+        + '／' + esc(p.gender || '—') + '／' + esc(p.birthday || '—') + '</div>'
+      : '<div class="admeta" style="color:#b23a2e">アンケート未回答</div>';
     return '<div class="adrow"><div class="adcol"><div class="adnm">' + esc(p.name || '(名前未取得)') + '</div>'
+      + prof
       + '<div class="admeta">初回 ' + esc(p.first || '—') + '　体験 ' + p.trials + '回　現在：' + esc(p.tierLabel || p.tier) + '</div></div>'
       + '<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">'
       +   tierBtn(p, 'trial',  '体験',   'back')
@@ -560,7 +583,9 @@ function renderSessionPicker(){
 }
 
 function render(){
+  if (!state.hasProfile){ renderProfile(); return; }
   if (state.adminView){ renderAdmin(); return; }
+  if (state.mode === 'profile'){ renderProfile(); return; }
   if (state.mode === 'trial'){ renderTrial(); return; }
   if (!state.practices.length){
     q('root').innerHTML = '<div class="msg err">現在、募集中の練習日がありません。</div>';
@@ -792,6 +817,80 @@ function renderResult(results){
   window.scrollTo(0,0);
 }
 
+/* ---------------- 友だち追加時アンケート ---------------- */
+function renderProfile(){
+  var p = state.myProfile || {};
+  var wards = (state.wards && state.wards.length) ? state.wards
+    : ['東区','博多区','中央区','南区','城南区','早良区','西区','福岡市外'];
+  var wardOpts = '<option value="">お住まいの区を選ぶ</option>' + wards.map(function(w){
+    return '<option value="' + esc(w) + '"' + (p.ward === w ? ' selected' : '') + '>' + esc(w) + '</option>';
+  }).join('');
+  function genOpt(v){ return '<option' + (p.gender === v ? ' selected' : '') + '>' + v + '</option>'; }
+
+  var done = state.hasProfile;
+  var h = '<div class="gbox">'
+    + '<div class="gbox-h">' + (done ? '登録内容の変更' : 'かんたんアンケート（4項目）') + '</div>'
+    + '<p class="gbox-sub">当日の受付と、会場のご案内に使わせてもらいます。'
+    + (done ? '' : '<b>回答すると、練習日の申し込みメニューが使えるようになります。</b>')
+    + '</p>'
+    + '<div class="gform">'
+    +   '<input id="pf-name" placeholder="お名前（フルネーム）" autocomplete="name" value="' + esc(p.realName || '') + '">'
+    +   '<input id="pf-bd" type="date" value="' + esc(p.birthday || '') + '">'
+    +   '<select id="pf-ward">' + wardOpts + '</select>'
+    +   '<select id="pf-gender">' + genOpt('男性') + genOpt('女性') + genOpt('その他') + '</select>'
+    +   '<div class="gform-btns"><button class="add" onclick="submitProfile()">'
+    +     (done ? 'この内容に変更する' : '回答して申し込みに進む') + '</button></div>'
+    + '</div></div>';
+
+  q('root').innerHTML = h;
+  q('footer').style.display = 'none';
+}
+
+function submitProfile(){
+  if (state.profileBusy) return;
+  if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
+  var realName = (q('pf-name') && q('pf-name').value || '').trim();
+  var birthday = (q('pf-bd') && q('pf-bd').value || '').trim();
+  var ward     = q('pf-ward') ? q('pf-ward').value : '';
+  var gender   = q('pf-gender') ? q('pf-gender').value : '';
+  if (!realName){ showMsg('お名前を入力してください。','err'); return; }
+  if (!birthday){ showMsg('生年月日を入力してください。','err'); return; }
+  if (!ward){ showMsg('お住まいの区を選んでください。','err'); return; }
+
+  state.profileBusy = true;
+  var btns = document.querySelectorAll('.gform-btns button');
+  for (var i=0;i<btns.length;i++){ btns[i].disabled = true; }
+  showMsg('送信中…','');
+
+  apiPost({ action:'save_profile', lineUserId: state.userId, lineName: state.lineName,
+            idToken: state.idToken, realName: realName, birthday: birthday, ward: ward, gender: gender })
+    .then(function(res){
+      state.profileBusy = false;
+      if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + (res.error||''),'err'); render(); return; }
+      state.hasProfile = true;
+      state.mode = '';
+      showMsg('','');
+      q('result').innerHTML = '<div class="result"><h2>✅ 回答ありがとうございます</h2>'
+        + '<div class="note">メニューが切り替わりました。トーク画面を一度閉じて開き直すと、'
+        + '下のメニューから練習日の申し込みができるようになります。</div></div>';
+      window.scrollTo(0,0);
+      renderHead_();
+      loadAll();
+    })
+    .catch(function(e){ state.profileBusy = false; showMsg('送信に失敗しました（通信）: ' + e,'err'); render(); });
+}
+
+/** 申込み系APIが「アンケート未回答」で弾いたときに、回答画面へ戻す */
+function handleNeedProfile(res){
+  if (res && /__NEEDPROFILE__/.test(String(res.error || ''))){
+    state.hasProfile = false; state.mode = 'profile';
+    showMsg('先にアンケートへの回答をお願いします。','err');
+    renderHead_(); render();
+    return true;
+  }
+  return false;
+}
+
 /* ---------------- 体験申し込みモード ---------------- */
 function trialLeft(pid){
   var r = rosterFor(pid), p = pById(pid);
@@ -903,7 +1002,7 @@ function submitTrial(){
             practiceId: pid, name: name, age: age, gender: gender, referrer: referrer })
     .then(function(res){
       state.busy = false;
-      if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + (res.error||''),'err'); render(); return; }
+      if (!res.ok){ if (handleAuthFail(res) || handleNeedProfile(res)) return; showMsg('送信に失敗しました: ' + (res.error||''),'err'); render(); return; }
       if (res.full){ showMsg('その日は体験枠が満席です。別の日を選んでください。','err'); state.trialForm = true; loadAll(); return; }
       state.trialForm = false;
       showMsg('','');
@@ -925,7 +1024,7 @@ function cancelTrial(){
             practiceId: mt.practiceId, cancel: true })
     .then(function(res){
       state.busy = false;
-      if (!res.ok){ if (handleAuthFail(res)) return; showMsg('取り消しに失敗しました: ' + (res.error||''),'err'); return; }
+      if (!res.ok){ if (handleAuthFail(res) || handleNeedProfile(res)) return; showMsg('取り消しに失敗しました: ' + (res.error||''),'err'); return; }
       showMsg('','');
       q('result').innerHTML = '<div class="result"><h2>取り消しました</h2><div class="note">またいつでもお申し込みいただけます。</div></div>';
       window.scrollTo(0,0);
@@ -949,7 +1048,7 @@ q('submitBtn').addEventListener('click', function(){
     .then(function(res){
       state.busy = false; btn.disabled = false; updateSubmitBtn();
       if (!res.ok){
-        if (handleAuthFail(res)) return;
+        if (handleAuthFail(res) || handleNeedProfile(res)) return;
         showMsg('送信に失敗しました: ' + res.error + '\n\n最新の状態を読み直しました。画面のチェックが実際の登録内容です。', 'err');
         state.touched = false; loadAll();      // 画面と実データのズレを防ぐ
         return;
