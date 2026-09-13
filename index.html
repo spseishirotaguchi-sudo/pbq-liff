@@ -217,24 +217,41 @@ var state = { userId:"", lineName:"", idToken:"",
               isMember:false, isAdmin:false, adminView:false, people:[],
               monthlyLimit:4, canVote:true, unlimited:false, myRemaining:{}, session:null,
               mode:"", trialDay:"", trialForm:false,
-              hasProfile:true, myProfile:null, wards:[], profileBusy:false };
+              hasProfile:true, myProfile:null, wards:[], profileBusy:false,
+              fresh:false };   // fresh=サーバーから最新を受け取ったか（それまで送信させない）
 var refreshTimer = null;
 function qparam(k){ try{ return new URLSearchParams(location.search).get(k) || ""; }catch(e){ return ""; } }
 function hasAdminParam(){ return qparam('admin') === '1'; }
 function isTrialMode(){ return qparam('mode') === 'trial'; }
 function isProfileMode(){ return qparam('mode') === 'profile'; }
 
+/* 前回の表示内容を端末に保存しておき、次に開いたときはLINEの初期化を待たずにすぐ出す。
+   最新の内容が届くまでは送信ボタンを押せないので、古い内容のまま保存されることはない。 */
+var SNAP_KEY = 'pbq_snap_v2';
 function saveSnapshot(){
-  try{ localStorage.setItem('pbq_snap', JSON.stringify({
-    practices: state.practices, roster: state.roster, mine: state.mine, myGuests: state.myGuests, ts: Date.now()
+  try{ localStorage.setItem(SNAP_KEY, JSON.stringify({
+    userId: state.userId, lineName: state.lineName,
+    practices: state.practices, roster: state.roster, mine: state.mine, myGuests: state.myGuests,
+    myTrials: state.myTrials, canVote: state.canVote, hasProfile: state.hasProfile,
+    monthlyLimit: state.monthlyLimit, unlimited: state.unlimited, myRemaining: state.myRemaining,
+    isMember: state.isMember, isAdmin: state.isAdmin, ts: Date.now()
   })); }catch(e){}
 }
 function loadSnapshot(){
   try{
-    var s = JSON.parse(localStorage.getItem('pbq_snap') || 'null');
-    if (s && s.practices && s.practices.length && (Date.now() - s.ts) < 20*60*1000) return s;
+    var s = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null');
+    if (s && s.userId && s.practices && s.practices.length && (Date.now() - s.ts) < 12*60*60*1000) return s;
   }catch(e){}
   return null;
+}
+function applySnapshot_(s){
+  state.userId = s.userId; state.lineName = s.lineName || '';
+  state.practices = s.practices; state.roster = s.roster || [];
+  state.mine = s.mine || []; state.myGuests = s.myGuests || []; state.myTrials = s.myTrials || [];
+  state.canVote = s.canVote !== false; state.hasProfile = s.hasProfile !== false;
+  state.monthlyLimit = Number(s.monthlyLimit) > 0 ? Number(s.monthlyLimit) : 4;
+  state.unlimited = s.unlimited === true; state.myRemaining = s.myRemaining || {};
+  state.isMember = !!s.isMember; state.isAdmin = !!s.isAdmin;
 }
 
 function q(id){ return document.getElementById(id); }
@@ -265,18 +282,41 @@ function fetchJson_(url, opts, timeoutMs){
 }
 function wait_(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
 
-/* 読み込み：10秒で打ち切って、最大3回まで自動で再試行 */
+/* HEDGE-BEGIN
+   読み込みの「追いかけ送信」。Apps Script は寝起きの1回だけ7〜12秒かかり、別の1回は1秒で返る。
+   そこで、HEDGE_MS 待っても返ってこなければ同じ読み込みをもう1本投げ、先に返った方を使う。
+   （以前は10秒で打ち切っていたため、あと少しで返る寝起きの応答を捨ててやり直していた） */
+var HEDGE_MS = 2500, GET_TIMEOUT_MS = 20000;
+function hedgedGet_(url, fetcher){
+  return new Promise(function(resolve, reject){
+    var settled = false, launched = 0, failed = 0, lastErr = null, timer = null;
+    function launch(){
+      launched++;
+      fetcher(url).then(function(d){
+        if (settled) return;
+        settled = true; if (timer) clearTimeout(timer); resolve(d);
+      }, function(e){
+        if (settled) return;
+        failed++; lastErr = e;
+        if (launched < 2){ if (timer) clearTimeout(timer); launch(); return; }   // 1本目が即失敗なら2本目をすぐ出す
+        if (failed >= launched){ settled = true; reject(lastErr); }
+      });
+    }
+    launch();
+    timer = setTimeout(function(){ if (!settled && launched < 2) launch(); }, HEDGE_MS);
+  });
+}
+/* HEDGE-END */
+
+/* 読み込み：追いかけ送信つきで取りに行き、2本とも失敗したら少し待って1回だけやり直す */
 function apiGet(params){
   var qs = Object.keys(params).map(function(k){
     return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
   var url = API + '?' + qs;
-  function attempt(n){
-    return fetchJson_(url, { method:'GET' }, 10000).catch(function(e){
-      if (n >= 3) throw e;
-      return wait_(600 * n).then(function(){ return attempt(n + 1); });
-    });
-  }
-  return attempt(1);
+  function fetcher(u){ return fetchJson_(u, { method:'GET' }, GET_TIMEOUT_MS); }
+  return hedgedGet_(url, fetcher).catch(function(){
+    return wait_(800).then(function(){ return hedgedGet_(url, fetcher); });
+  });
 }
 
 /* 送信：保存は時間がかかることがあるので長めに待つ。
@@ -294,29 +334,38 @@ function handleAuthFail(d){ if (d && d.relogin){ try{ liff.login(); }catch(e){} 
 
 /* ---------------- 起動 ---------------- */
 function boot(){
+  if (isTrialMode()){ state.mode = 'trial'; state.trialDay = qparam('day'); }
+  if (isProfileMode()){ state.mode = 'profile'; }
+  // LINEの初期化（1〜3秒）を待たずに、前回の内容をすぐ表示する
+  var snap = loadSnapshot();
+  if (snap){ applySnapshot_(snap); paintSnapshot_(); }
+
   if (typeof liff === 'undefined'){
     showMsg('LINEの読み込みに失敗しました。通信環境を確認して開き直してください。','err'); return;
   }
   liff.init({ liffId: LIFF_ID })
     .then(function(){
       if (!liff.isLoggedIn()){ liff.login(); return null; }
+      // IDトークンの中身にユーザーIDと名前が入っているので、プロフィール取得の通信を省く
+      var dec = null;
+      try { dec = liff.getDecodedIDToken(); } catch(e){ dec = null; }
+      if (dec && dec.sub) return { userId: dec.sub, displayName: dec.name || '' };
       return liff.getProfile();
     })
     .then(function(p){
       if (!p) return;
+      if (snap && snap.userId !== p.userId){ resetForOtherUser_(); }   // 端末で別のLINEアカウントに切り替えた場合
       state.userId   = p.userId;
-      state.lineName = p.displayName || "";
+      state.lineName = p.displayName || state.lineName || "";
       try { state.idToken = liff.getIDToken() || ""; } catch(e){ state.idToken = ""; }
-      if (isTrialMode()){ state.mode = 'trial'; state.trialDay = qparam('day'); }
-      if (isProfileMode()){ state.mode = 'profile'; }
-      start();
+      start(!!snap && snap.userId === p.userId);
     })
     .catch(function(e){
       showMsg('LINE初期化エラー: ' + (e && e.message ? e.message : e) + '\nLINEアプリ内から開き直してください。','err');
     });
 }
 
-var APP_VERSION = 'v3.3 (09/13)';
+var APP_VERSION = 'v3.4 (09/13)';
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
             pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
@@ -357,21 +406,32 @@ function renderHead_(){
     '<span class="ver">' + APP_VERSION + '</span></span>' +
     '<button id="refreshBtn">更新</button></div></div>';
   var rb = q('refreshBtn');
-  if (rb) rb.addEventListener('click', function(){ silentRefresh(true); });
+  // 最新の読み込みに失敗している間は、「更新」で全体を読み直す
+  if (rb) rb.addEventListener('click', function(){ if (!state.fresh) loadAll(); else silentRefresh(true); });
 }
 
-function start(){
+function paintSnapshot_(){
+  if (state.mode !== 'trial') seedFromServer();
+  renderHead_();
+  render();
+  var f = q('fresh'); if (f) f.textContent = '前回の内容を表示中・最新を読み込み中…';
+  updateSubmitBtn();
+}
+function resetForOtherUser_(){
+  state.practices = []; state.roster = []; state.mine = []; state.myGuests = []; state.myTrials = [];
+  state.selected = {}; state.touched = false; state.myRemaining = {};
+  state.canVote = true; state.hasProfile = true; state.isAdmin = false; state.isMember = false;
+  q('root').innerHTML = '';
+}
+
+function start(painted){
   renderHead_();
   document.addEventListener('visibilitychange', function(){ if (!document.hidden) silentRefresh(false); });
-
-  var snap = loadSnapshot();
-  if (snap){
-    state.practices = snap.practices; state.roster = snap.roster;
-    state.mine = snap.mine || []; state.myGuests = snap.myGuests || [];
-    if (state.mode !== 'trial') seedFromServer();
+  if (painted){
     render();
-    var f = q('fresh'); if (f) f.textContent = '最新に更新中…';
+    var f = q('fresh'); if (f) f.textContent = '前回の内容を表示中・最新を読み込み中…';
   }
+  updateSubmitBtn();
   loadAll();
 }
 
@@ -388,9 +448,10 @@ function seedFromServer(){
 
 /* ---------------- データ取得 ---------------- */
 function loadAll(){
+  state.loadFailed = false; updateSubmitBtn();
   apiGet({ api:'bootstrap', userId: state.userId, name: state.lineName, idToken: state.idToken })
     .then(function(d){
-      if (!d.ok){ if (handleAuthFail(d)) return; markLive(false); showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
+      if (!d.ok){ if (handleAuthFail(d)) return; state.loadFailed = true; updateSubmitBtn(); markLive(false); showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
       state.practices = d.practices; state.roster = d.roster;
       state.mine = d.mine || []; state.myGuests = d.myGuests || []; state.myTrials = d.myTrials || [];
       state.isMember = !!d.isMember; state.isAdmin = !!d.isAdmin;
@@ -405,13 +466,16 @@ function loadAll(){
       if (!state.hasProfile) state.mode = 'profile';
       else if (state.mode === 'profile' && !isProfileMode()) state.mode = '';
       if (state.isAdmin && hasAdminParam() && !state.adminViewInit){ state.adminViewInit = true; state.adminView = true; loadAdmin(); }
+      state.fresh = true;
       seedFromServer();
+      renderHead_();
       markLive(true);
       render();
+      updateSubmitBtn();
       saveSnapshot();
       scheduleRefresh();
     })
-    .catch(function(e){ markLive(false); showMsg('つながりにくくなっています（' + (e && e.message ? e.message : e) + '）。\n少し待ってから「更新」を押すか、画面を閉じて開き直してください。', 'err'); scheduleRefresh(); });
+    .catch(function(e){ state.loadFailed = true; updateSubmitBtn(); markLive(false); showMsg('つながりにくくなっています（' + (e && e.message ? e.message : e) + '）。\n少し待ってから「更新」を押すか、画面を閉じて開き直してください。', 'err'); scheduleRefresh(); });
 }
 
 /* ---------------- 管理モード（運営のみ） ---------------- */
@@ -835,6 +899,13 @@ function fallbackCopy(){
 function selectedCount(){ return Object.keys(state.selected).filter(function(k){ return state.selected[k]; }).length; }
 function updateSubmitBtn(){
   var btn = q('submitBtn');
+  if (!btn) return;
+  if (!state.fresh){
+    btn.disabled = true; btn.classList.remove('warn');
+    btn.textContent = state.loadFailed ? '読み込めませんでした（上の「更新」を押してください）' : '最新の内容を読み込み中…';
+    return;
+  }
+  if (!state.busy) btn.disabled = false;
   if (selectedCount() === 0 && state.hadEntries){
     btn.textContent = 'すべて取り消して送信'; btn.classList.add('warn');
   } else {
@@ -906,6 +977,7 @@ function renderProfile(){
 
 function submitProfile(){
   if (state.profileBusy) return;
+  if (!state.fresh){ showMsg('読み込み中です。数秒待ってから送信してください。',''); return; }
   if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
   var realName = (q('pf-name') && q('pf-name').value || '').trim();
   var yy = (q('pf-y') && q('pf-y').value || '').trim();
@@ -1052,6 +1124,7 @@ function openTrialForm(){ state.trialForm = true; showMsg('',''); render(); }
 function closeTrialForm(){ state.trialForm = false; showMsg('',''); render(); }
 
 function submitTrial(){
+  if (!state.fresh){ showMsg('読み込み中です。数秒待ってから送信してください。',''); return; }
   if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
   var pid = q('tr-day') ? q('tr-day').value : '';
   var name = (q('tr-name') && q('tr-name').value || '').trim();
@@ -1085,6 +1158,7 @@ function submitTrial(){
 function cancelTrial(){
   var mt = myTrial();
   if (!mt) return;
+  if (!state.fresh){ showMsg('読み込み中です。数秒待ってから操作してください。',''); return; }
   if (!window.confirm('体験の申し込みを取り消します。よろしいですか？')) return;
   state.busy = true;
   apiPost({ action:'submit_trial', lineUserId: state.userId, lineName: state.lineName, idToken: state.idToken,
@@ -1102,6 +1176,7 @@ function cancelTrial(){
 
 /* ---------------- 送信 ---------------- */
 q('submitBtn').addEventListener('click', function(){
+  if (!state.fresh){ showMsg('最新の内容を読み込み中です。数秒待ってから送信してください。',''); return; }
   if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
   if (state.guestForm){ showMsg('友達の入力を「追加する」か「やめる」で確定してから送信してください。', 'err'); return; }
   var ids = Object.keys(state.selected).filter(function(k){ return state.selected[k]; });
