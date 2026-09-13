@@ -243,14 +243,52 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
 function showMsg(t,cls){ q('msg').innerHTML = t ? '<div class="msg '+(cls||'')+'">'+esc(t)+'</div>' : ''; if(t) window.scrollTo(0,0); }
 function two(n){ return ('0'+n).slice(-2); }
 
+/* Apps Script はときどき数十秒固まってから HTML の404を返すことがある。
+   待ち時間に上限を設け、JSON以外が返ったら「混雑」として扱う。 */
+function fetchJson_(url, opts, timeoutMs){
+  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, timeoutMs) : null;
+  if (ctrl) opts.signal = ctrl.signal;
+  function done(){ if (timer) clearTimeout(timer); }
+  return fetch(url, opts).then(function(r){
+    return r.text().then(function(t){
+      done();
+      try { return JSON.parse(t); }
+      catch(e){ var err = new Error('サーバーが混み合っています'); err.busy = true; throw err; }
+    });
+  }, function(e){
+    done();
+    var err = new Error(e && e.name === 'AbortError' ? '応答に時間がかかっています' : '通信に失敗しました');
+    err.busy = true; err.timeout = (e && e.name === 'AbortError');
+    throw err;
+  });
+}
+function wait_(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+/* 読み込み：10秒で打ち切って、最大3回まで自動で再試行 */
 function apiGet(params){
   var qs = Object.keys(params).map(function(k){
     return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
-  return fetch(API + '?' + qs, { method:'GET' }).then(function(r){ return r.json(); });
+  var url = API + '?' + qs;
+  function attempt(n){
+    return fetchJson_(url, { method:'GET' }, 10000).catch(function(e){
+      if (n >= 3) throw e;
+      return wait_(600 * n).then(function(){ return attempt(n + 1); });
+    });
+  }
+  return attempt(1);
 }
+
+/* 送信：保存は時間がかかることがあるので長めに待つ。
+   JSON以外（404など＝処理結果が返ってこなかった）のときだけ1回やり直す。
+   サーバー側は「最終状態を保存する」作りなので、やり直しても二重登録にはならない。 */
 function apiPost(body){
-  return fetch(API, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-    body: JSON.stringify(body) }).then(function(r){ return r.json(); });
+  var opts = function(){ return { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+                                  body: JSON.stringify(body) }; };
+  return fetchJson_(API, opts(), 30000).catch(function(e){
+    if (!e.busy || e.timeout) throw e;
+    return wait_(800).then(function(){ return fetchJson_(API, opts(), 30000); });
+  });
 }
 function handleAuthFail(d){ if (d && d.relogin){ try{ liff.login(); }catch(e){} return true; } return false; }
 
@@ -278,7 +316,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v3.2 (09/13)';
+var APP_VERSION = 'v3.3 (09/13)';
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
             pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
@@ -373,7 +411,7 @@ function loadAll(){
       saveSnapshot();
       scheduleRefresh();
     })
-    .catch(function(e){ markLive(false); showMsg('通信エラー: ' + e, 'err'); scheduleRefresh(); });
+    .catch(function(e){ markLive(false); showMsg('つながりにくくなっています（' + (e && e.message ? e.message : e) + '）。\n少し待ってから「更新」を押すか、画面を閉じて開き直してください。', 'err'); scheduleRefresh(); });
 }
 
 /* ---------------- 管理モード（運営のみ） ---------------- */
