@@ -56,7 +56,7 @@ function saveSnapshot(){
   try{ localStorage.setItem(SNAP_KEY, JSON.stringify({
     userId: state.userId, lineName: state.lineName,
     practices: state.practices, roster: state.roster, mine: state.mine, myGuests: state.myGuests,
-    myTrials: state.myTrials, canVote: state.canVote, hasProfile: state.hasProfile,
+    myTrials: state.myTrials, canVote: state.canVote, hasProfile: state.hasProfile, votingPaused: state.votingPaused,
     monthlyLimit: state.monthlyLimit, unlimited: state.unlimited, myRemaining: state.myRemaining,
     isMember: state.isMember, isAdmin: state.isAdmin, ts: Date.now()
   })); }catch(e){}
@@ -76,6 +76,7 @@ function applySnapshot_(s){
   state.monthlyLimit = Number(s.monthlyLimit) > 0 ? Number(s.monthlyLimit) : 4;
   state.unlimited = s.unlimited === true; state.myRemaining = s.myRemaining || {};
   state.isMember = !!s.isMember; state.isAdmin = !!s.isAdmin;
+  state.votingPaused = s.votingPaused === true;
 }
 
 function q(id){ return document.getElementById(id); }
@@ -189,7 +190,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v3.7 (09/18)';
+var APP_VERSION = 'v3.8 (09/19)';
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
             pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
@@ -281,6 +282,7 @@ function loadAll(){
       state.isMember = !!d.isMember; state.isAdmin = !!d.isAdmin;
       state.monthlyLimit = Number(d.monthlyLimit) > 0 ? Number(d.monthlyLimit) : 4;
       state.canVote = d.canVote !== false;
+      state.votingPaused = d.votingPaused === true;
       state.unlimited = d.unlimited === true;
       state.myRemaining = d.myRemaining || {};
       state.hasProfile = d.hasProfile !== false;
@@ -526,11 +528,28 @@ function renderSessionPicker(){
   q('footer').style.display = 'none';
 }
 
+function renderVotingPaused(){
+  q('root').innerHTML =
+    '<div style="background:#fff;border:1px solid var(--line);border-top:6px solid var(--brick);border-radius:6px;padding:30px 24px 26px;text-align:center">'
+    + '<div style="font:700 12px/1 Barlow,Arial,sans-serif;letter-spacing:.16em;color:var(--brick)">NOTICE</div>'
+    + '<div style="font-size:22px;font-weight:800;line-height:1.5;letter-spacing:-.03em;margin:14px 0 18px">10月の参加投票を<br>一時停止しています</div>'
+    + '<p style="font-size:14px;line-height:2;color:var(--ink-2);margin:0;text-align:left">'
+    +   'いま、公式LINEの友だち追加がうまくできない方が出ています。<br>'
+    +   'メンバー全員が投票できる状態になるまで、10月の参加投票をお休みします。<br>'
+    +   '準備ができしだい、<b>このLINEでお知らせして投票を再開します。</b><br>'
+    +   'それまで少々お待ちください。</p>'
+    + '<p style="font-size:12px;line-height:1.9;color:var(--ink-3);margin:18px 0 0;padding-top:14px;border-top:1px dashed var(--line);text-align:left">'
+    +   'すでに投票した分は、そのまま残っています。</p>'
+    + '</div>';
+  q('footer').style.display = 'none';
+}
+
 function render(){
   if (!state.hasProfile){ renderProfile(); return; }
   if (state.adminView){ renderAdmin(); return; }
   if (state.mode === 'profile'){ renderProfile(); return; }
   if (state.mode === 'trial'){ renderTrial(); return; }
+  if (state.votingPaused && !state.isAdmin){ renderVotingPaused(); return; }
   if (!state.practices.length){
     q('root').innerHTML = '<div class="msg err">現在、募集中の練習日がありません。</div>';
     q('footer').style.display = 'none';
@@ -538,7 +557,8 @@ function render(){
   }
   if (!state.session){ renderSessionPicker(); return; }
   var inSes = practicesIn(state.session);
-  var html = sesTagHtml() + '<div class="section-label"><span>02</span> 参加したい日を選択</div><p class="selection-help">チェックを外して送信すると、その日の申込みを取り消します。</p>';
+  var html = (state.votingPaused ? '<div class="msg err">【運営のみ表示】参加投票は一時停止中です。メンバーには停止のお知らせが表示されています。</div>' : '')
+    + sesTagHtml() + '<div class="section-label"><span>02</span> 参加したい日を選択</div><p class="selection-help">チェックを外して送信すると、その日の申込みを取り消します。</p>';
   if (!inSes.length){
     q('root').innerHTML = html + '<div class="msg err">' + SES[state.session].label + 'は今月の開催がありません。「部を変える」から選び直してください。</div>';
     q('footer').style.display = 'none';
