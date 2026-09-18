@@ -190,7 +190,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v3.8 (09/19)';
+var APP_VERSION = 'v3.9 (09/19)';
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
             pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
@@ -529,17 +529,20 @@ function renderSessionPicker(){
 }
 
 function renderVotingPaused(){
+  function L(t){ return '<span style="display:block;white-space:nowrap">' + t + '</span>'; }
   q('root').innerHTML =
-    '<div style="background:#fff;border:1px solid var(--line);border-top:6px solid var(--brick);border-radius:6px;padding:30px 24px 26px;text-align:center">'
+    '<div style="background:#fff;border:1px solid var(--line);border-top:6px solid var(--brick);border-radius:6px;padding:30px 16px 24px;text-align:center">'
     + '<div style="font:700 12px/1 Barlow,Arial,sans-serif;letter-spacing:.16em;color:var(--brick)">NOTICE</div>'
-    + '<div style="font-size:22px;font-weight:800;line-height:1.5;letter-spacing:-.03em;margin:14px 0 18px">10月の参加投票を<br>一時停止しています</div>'
-    + '<p style="font-size:14px;line-height:2;color:var(--ink-2);margin:0;text-align:left">'
-    +   'いま、公式LINEの友だち追加がうまくできない方が出ています。<br>'
-    +   'メンバー全員が投票できる状態になるまで、10月の参加投票をお休みします。<br>'
-    +   '準備ができしだい、<b>このLINEでお知らせして投票を再開します。</b><br>'
-    +   'それまで少々お待ちください。</p>'
-    + '<p style="font-size:12px;line-height:1.9;color:var(--ink-3);margin:18px 0 0;padding-top:14px;border-top:1px dashed var(--line);text-align:left">'
-    +   'すでに投票した分は、そのまま残っています。</p>'
+    + '<div style="font-size:22px;font-weight:800;line-height:1.5;letter-spacing:-.03em;margin:14px 0 20px">' + L('10月の参加投票を') + L('一時停止しています') + '</div>'
+    + '<div style="font-size:14px;line-height:2;color:var(--ink-2)">'
+    +   L('いま、公式LINEの友だち追加が') + L('うまくできない方が出ています。')
+    +   '<div style="height:12px"></div>'
+    +   L('メンバー全員が投票できるようになるまで、') + L('10月の参加投票をお休みします。')
+    +   '<div style="height:12px"></div>'
+    +   L('準備ができしだい、このLINEで') + L('<b>お知らせして、投票を再開します。</b>') + L('それまで少々お待ちください。')
+    + '</div>'
+    + '<div style="font-size:12px;line-height:1.9;color:var(--ink-3);margin-top:20px;padding-top:14px;border-top:1px dashed var(--line)">'
+    +   L('すでに投票した分は、そのまま残っています。') + '</div>'
     + '</div>';
   q('footer').style.display = 'none';
 }
