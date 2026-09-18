@@ -189,7 +189,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v3.5 (09/14)';
+var APP_VERSION = 'v3.6 (09/18)';
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
             pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
@@ -932,12 +932,14 @@ function renderTrial(){
     + '<div class="gbox-h">' + (mt ? '体験の内容を変更' : '体験に申し込む') + '</div>'
     + '<p class="gbox-sub">行きたい日を選び、お名前・年齢・性別を入力して送信してください。'
     + 'メンバーの方に誘われた場合は、<b>紹介者のお名前</b>も入れてください（任意）。'
-    + '当日は開始時間までに体育館の正面入り口に集合、参加費は500円です。</p>'
+    + '当日は開始時間までに体育館の正面入り口に集合、参加費は500円です。'
+    + '<br><b>※ p.b.qは20代（20〜29歳）限定のサークルです。</b></p>'
     + '<div class="gform">'
     +   '<label for="tr-day">参加する練習日</label><select id="tr-day">' + opts + '</select>'
     +   '<label for="tr-name">お名前</label><input id="tr-name" placeholder="お名前" autocomplete="name" value="' + esc(nm) + '">'
-    +   '<label>年齢・性別</label><div class="row"><input id="tr-age" aria-label="年齢" class="age" type="number" inputmode="numeric" placeholder="年齢（目安）" value="' + esc(ag) + '">'
+    +   '<label>年齢・性別</label><div class="row"><input id="tr-age" aria-label="年齢" class="age" type="number" inputmode="numeric" placeholder="年齢" min="0" max="99" value="' + esc(ag) + '" oninput="clearTrialErr()">'
     +   '<select id="tr-gender" aria-label="性別" class="gen">' + genOpt('男性') + genOpt('女性') + genOpt('その他') + '</select></div>'
+    +   '<div id="tr-err" class="msg err" role="alert" style="margin:0" hidden></div>'
     +   '<label for="tr-ref">紹介者のお名前（任意）</label><input id="tr-ref" placeholder="例：田中 太郎" value="' + esc(rf) + '">'
     +   '<div class="gform-btns">'
     +     '<button class="add" onclick="submitTrial()">' + (mt ? 'この内容で変更' : '体験を申し込む') + '</button>'
@@ -954,6 +956,17 @@ function renderTrial(){
   q('footer').style.display = 'none';
 }
 
+function showTrialErr(t){
+  var e = q('tr-err'), a = q('tr-age');
+  if (e){ e.textContent = t; e.hidden = false; }
+  if (a){ a.style.borderColor = 'var(--brick)'; a.style.borderWidth = '2px'; a.focus(); }
+}
+function clearTrialErr(){
+  var e = q('tr-err'), a = q('tr-age');
+  if (e){ e.hidden = true; e.textContent = ''; }
+  if (a){ a.style.borderColor = ''; a.style.borderWidth = ''; }
+}
+
 function openTrialForm(){ state.trialForm = true; showMsg('',''); render(); }
 function closeTrialForm(){ state.trialForm = false; showMsg('',''); render(); }
 
@@ -967,7 +980,9 @@ function submitTrial(){
   var referrer = (q('tr-ref') && q('tr-ref').value || '').trim();
   if (!pid){ showMsg('体験に行きたい日を選んでください（満席の日は選べません）。','err'); return; }
   if (!name){ showMsg('お名前を入力してください。','err'); return; }
-  if (!age){ showMsg('年齢を入力してください（だいたいでOK）。','err'); return; }
+  if (!age){ showMsg('年齢を入力してください。','err'); return; }
+  var ageN = parseInt(age.replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }), 10);
+  if (!(ageN >= 20 && ageN <= 29)){ showTrialErr('p.b.qは20代限定のサークルのため、20代以外の方のお申し込みはお断りしております。'); return; }
   var btns = document.querySelectorAll('.gform-btns button');
   for (var i=0;i<btns.length;i++){ btns[i].disabled = true; }
   showMsg('送信中…','');
