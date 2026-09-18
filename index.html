@@ -189,7 +189,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v3.6 (09/18)';
+var APP_VERSION = 'v3.7 (09/18)';
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
             pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
@@ -408,10 +408,22 @@ function markLive(ok){
     two(t.getHours()) + ':' + two(t.getMinutes());
 }
 
+/* 友達紹介リンクの一時停止（メンバー移行期間中）。この日の0時から自動でリンクを表示する */
+var INVITE_OPEN_FROM = new Date(2026, 8, 28, 0, 0, 0);   // 2026-09-28
+function inviteClosed_(){ return new Date() < INVITE_OPEN_FROM; }
+function inviteClosedHtml_(){
+  return '<div class="gbox"><div class="gbox-h">友達を誘うときは</div>'
+    + '<p class="gbox-sub">現在はメンバーの登録期間のため、友達の紹介を一時的にお休みしています。</p>'
+    + '<p class="gbox-sub"><b>9月28日（月）以降</b>、ここに友だち追加用のリンクを載せます。<br>'
+    + 'そのリンクをコピーして友達に送り、メニューの<b>「体験に申し込む」</b>から申し込んでもらうよう伝えてください。</p>'
+    + '</div>';
+}
+
 /* ---------------- 描画 ---------------- */
 var INVITE_URL = 'https://lin.ee/QPlvfJ1';
 
 function inviteBoxHtml(){
+  if (inviteClosed_()) return inviteClosedHtml_();
   return '<div class="gbox"><div class="gbox-h">友達を誘うときは</div>'
     + '<p class="gbox-sub">下のリンクを送ってください。お友達が<b>p.b.qの公式LINEを友だち追加</b>すると、'
     + 'メニューから体験に申し込めます。申込画面で<b>紹介者のお名前</b>を入れてもらってください。'
@@ -678,6 +690,7 @@ function removeGuest(idx){
 var INVITE_URL = 'https://lin.ee/QPlvfJ1';
 
 function inviteBoxHtml(){
+  if (inviteClosed_()) return inviteClosedHtml_();
   return '<div class="gbox"><div class="gbox-h">友達を誘うときは</div>'
     + '<p class="gbox-sub">下のリンクを送ってください。お友達が<b>p.b.qの公式LINEを友だち追加</b>すると、'
     + 'メニューから体験に申し込めます。申込画面で<b>紹介者のお名前</b>を入れてもらってください。'
