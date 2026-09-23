@@ -190,7 +190,8 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v4.0 (09/23)';
+var APP_VERSION = 'v4.1 (09/23)';
+var FEW_LEFT_THRESHOLD = 3; // 残り数名バッジのしきい値（自分が入れる枠が3以下なら「残り数名」）
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
             pm:{ label:'夜の部', note:'平日 19:00-22:00', kicker:'NIGHT SESSION' } };
@@ -586,7 +587,8 @@ function render(){
     if (mine && mine.status === 'confirmed')      badge = '<span class="badge b-mine">投票済み・参加確定</span>';
     else if (mine && mine.status === 'waitlist')  badge = '<span class="badge b-wait">キャンセル待ち ' + mine.waitlistPos + '番目</span>';
     else if (left <= 0)                           badge = '<span class="badge b-full">満席・キャンセル待ち受付</span>';
-    else                                          badge = '<span class="badge b-open">受付中</span>';
+    else if (left <= FEW_LEFT_THRESHOLD)          badge = '<span class="badge b-few">残り数名！</span>';
+    else                                          badge = '<span class="badge b-open">まだ空きあります！</span>';
 
     if (sel && !mine) badge = '<span class="badge b-pending">追加予定・未送信</span>' + badge;
     if (!sel && mine) badge = '<span class="badge b-cancel">取消予定・未送信</span>' + badge;
