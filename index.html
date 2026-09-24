@@ -38,7 +38,7 @@ var state = { userId:"", lineName:"", idToken:"",
               practices:[], roster:[], mine:[], myGuests:[], myTrials:[],
               selected:{}, guests:[], expanded:{}, guestForm:false,
               hadEntries:false, busy:false, touched:false,
-              isMember:false, isAdmin:false, adminView:false, people:[],
+              isMember:false, isAdmin:false, adminView:false, adminLoaded:false, people:[],
               monthlyLimit:4, canVote:true, unlimited:false, myRemaining:{}, session:null,
               mode:"", trialDay:"", trialForm:false,
               hasProfile:true, myProfile:null, wards:[], profileBusy:false,
@@ -190,7 +190,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v4.1 (09/23)';
+var APP_VERSION = 'v4.2 (09/24)';
 var FEW_LEFT_THRESHOLD = 3; // 残り数名バッジのしきい値（自分が入れる枠が3以下なら「残り数名」）
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
@@ -306,13 +306,14 @@ function loadAll(){
 }
 
 /* ---------------- 管理モード（運営のみ） ---------------- */
-function openAdmin(){ state.adminView = true; loadAdmin(); render(); }
+function openAdmin(){ state.adminView = true; state.adminLoaded = false; loadAdmin(); render(); }
 function closeAdmin(){ state.adminView = false; renderHead_(); markLive(true); render(); }
 function loadAdmin(){
   apiGet({ api:'admin_list', userId: state.userId, idToken: state.idToken })
     .then(function(d){
       if (!d.ok){ showMsg('管理データ取得に失敗: ' + (d.error||''), 'err'); return; }
       state.people = d.people || [];
+      state.adminLoaded = true;
       if (state.adminView) render();
     })
     .catch(function(e){ showMsg('通信エラー: ' + e, 'err'); });
@@ -367,6 +368,11 @@ function renderAdmin(){
     + '体験→準メンバーは初参加日の21時、準メンバー→メンバーは毎月24日22時に自動で上がります。</p>'
     + '<button id="backBtn" class="refline" style="border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:#fff;font-weight:700">← フォームに戻る</button>';
   q('backBtn').addEventListener('click', closeAdmin);
+  if (!state.adminLoaded){
+    q('root').innerHTML = '<div class="loading">読み込み中…</div>';
+    q('footer').style.display = 'none';
+    return;
+  }
   var h = '';
   groups.forEach(function(g){
     var list = state.people.filter(function(p){ return (p.tier || (p.member ? 'member' : 'trial')) === g.key; });
