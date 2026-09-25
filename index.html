@@ -190,7 +190,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v4.2 (09/24)';
+var APP_VERSION = 'v4.3 (09/25)';
 var FEW_LEFT_THRESHOLD = 3; // 残り数名バッジのしきい値（自分が入れる枠が3以下なら「残り数名」）
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
@@ -417,8 +417,8 @@ function markLive(ok){
     two(t.getHours()) + ':' + two(t.getMinutes());
 }
 
-/* 友達紹介リンクの一時停止（メンバー移行期間中）。この日の0時から自動でリンクを表示する */
-var INVITE_OPEN_FROM = new Date(2026, 8, 28, 0, 0, 0);   // 2026-09-28
+/* 友達紹介リンクの一時停止（メンバー移行期間中）。2026-09-25、移行モード終了に伴い再開 */
+var INVITE_OPEN_FROM = new Date(2026, 8, 25, 0, 0, 0);   // 2026-09-25 再開
 function inviteClosed_(){ return new Date() < INVITE_OPEN_FROM; }
 function inviteClosedHtml_(){
   return '<div class="gbox"><div class="gbox-h">友達を誘うときは</div>'
