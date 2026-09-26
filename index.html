@@ -190,7 +190,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v4.6 (09/26)';
+var APP_VERSION = 'v4.7 (09/26)';
 var FEW_LEFT_THRESHOLD = 3; // 残り数名バッジのしきい値（自分が入れる枠が3以下なら「残り数名」）
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
@@ -954,9 +954,10 @@ function renderTrial(){
     var left = trialLeft(p.id);
     var tp = [p.time, p.place].filter(function(s){return s;}).join(' ');
     var lbl = p.date + (tp ? '　' + tp : '');
-    if (left <= 0) return '<option value="' + esc(p.id) + '" disabled>' + esc(lbl) + '（満席）</option>';
+    if (left <= 0) return '<option value="' + esc(p.id) + '" disabled>' + esc(lbl) + '（満員のため受付終了）</option>';
     var selAttr = (p.id === preset) ? ' selected' : '';
-    return '<option value="' + esc(p.id) + '"' + selAttr + '>' + esc(lbl) + '（体験枠 残り' + left + '）</option>';
+    var leftLabel = (left <= 2) ? '残りわずか！' : 'まだ空きあります！';
+    return '<option value="' + esc(p.id) + '"' + selAttr + '>' + esc(lbl) + '（' + leftLabel + '）</option>';
   }).join('');
 
   var nm = (mt && mt.name) || state.lineName || '';
