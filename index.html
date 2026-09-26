@@ -190,7 +190,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v4.5 (09/26)';
+var APP_VERSION = 'v4.6 (09/26)';
 var FEW_LEFT_THRESHOLD = 3; // 残り数名バッジのしきい値（自分が入れる枠が3以下なら「残り数名」）
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
@@ -801,7 +801,7 @@ function renderResult(results){
   var wait = results.filter(function(r){ return r.status==='waitlist'; });
   var cxl = results.filter(function(r){ return r.status==='cancelled'; });
   var h = '<div class="result"><h2>✅ 送信しました</h2>'
-    + '<p class="note">この結果はLINEには送られません。スクリーンショットで控えるか、いつでもこの「参加投票」画面を開き直せば同じ内容を確認できます。</p>';
+    + '<p class="note">スクリーンショットで控えるか、いつでもこの「参加投票」画面を開き直せば同じ内容を確認できます。</p>';
   if (ok.length)   h += '<div class="grp ok"><div class="t">参加確定</div><ul>' + ok.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul></div>';
   if (wait.length) h += '<div class="grp wait"><div class="t">キャンセル待ち（定員オーバーのため）</div><ul>' + wait.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul><div class="note">空きが出た時点で、先着順にLINEで「参加できます」の通知が届きます。友達の分は紹介者に通知します。</div></div>';
   if (cxl.length)  h += '<div class="grp cxl"><div class="t">取り消し</div><ul>' + cxl.map(function(r){ return '<li>'+esc(r.label)+'</li>'; }).join('') + '</ul></div>';
