@@ -203,6 +203,34 @@ function sesTagHtml(){
        + '<span class="sestag ' + state.session + '">' + m.label + '</span></div>';
 }
 
+function nextConfirmedPractice_(){
+  var today = new Date();
+  today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return state.mine
+    .filter(function(m){ return m.status === 'confirmed'; })
+    .map(function(m){
+      var p = pById(m.practiceId);
+      if (!p) return null;
+      var hit = String(p.date || '').match(/(\d+)\s*\/\s*(\d+)/);
+      if (!hit) return null;
+      var when = new Date(today.getFullYear(), Number(hit[1]) - 1, Number(hit[2]));
+      return when >= today ? { practice:p, when:when } : null;
+    })
+    .filter(Boolean)
+    .sort(function(a, b){ return a.when - b.when; })[0] || null;
+}
+
+function nextGameHtml_(){
+  var next = nextConfirmedPractice_();
+  if (!next) return '';
+  var p = next.practice;
+  return '<div class="next-game">'
+    + '<span class="next-game-label">参加確定</span>'
+    + '<strong>' + esc(p.date) + '　' + esc(p.time) + '</strong>'
+    + '<span>' + esc(p.place) + '</span>'
+    + '</div>';
+}
+
 function renderHead_(){
   var name = '<div class="who"><span class="account-icon" aria-hidden="true">●</span><div><span class="account-label">ログイン中</span><b>' + esc(state.lineName) + '</b> さん</div></div>';
   if (state.mode === 'profile' || !state.hasProfile){
@@ -225,6 +253,7 @@ function renderHead_(){
   }
   q('head').innerHTML =
     '<div class="hero' + (state.session ? ' compact' : '') + '"><span class="kicker">YOUR NEXT GAME</span>' +
+    nextGameHtml_() +
     '<h1>練習日を選ぶ</h1>' +
     '<p class="sub">参加したい日を選び、下のボタンで送信してください。<br>満席の日はキャンセル待ちで受け付けます。</p>' +
     '<p class="sub" id="limit-lead"></p>' + name +
