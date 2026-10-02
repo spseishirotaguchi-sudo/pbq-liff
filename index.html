@@ -225,6 +225,7 @@ function nextGameHtml_(){
   if (!next) return '';
   var p = next.practice;
   return '<div class="next-game">'
+    + '<span class="kicker next-game-kicker">YOUR NEXT GAME</span>'
     + '<span class="next-game-label">参加確定</span>'
     + '<strong>' + esc(p.date) + '　' + esc(p.time) + '</strong>'
     + '<span>' + esc(p.place) + '</span>'
@@ -252,8 +253,7 @@ function renderHead_(){
     return;
   }
   q('head').innerHTML =
-    '<div class="hero' + (state.session ? ' compact' : '') + '"><span class="kicker">YOUR NEXT GAME</span>' +
-    nextGameHtml_() +
+    '<div class="hero' + (state.session ? ' compact' : '') + '">' + nextGameHtml_() +
     '<h1>練習日を選ぶ</h1>' +
     '<p class="sub">参加したい日を選び、下のボタンで送信してください。<br>満席の日はキャンセル待ちで受け付けます。</p>' +
     '<p class="sub" id="limit-lead"></p>' + name +
