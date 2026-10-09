@@ -42,12 +42,34 @@ var state = { userId:"", lineName:"", idToken:"",
               monthlyLimit:4, canVote:true, unlimited:false, myRemaining:{}, session:null,
               mode:"", trialDay:"", trialForm:false,
               hasProfile:true, myProfile:null, wards:[], profileBusy:false,
+              accountTier:'', entryMode:'', profileCompleted:false, trialDraft:null,
               fresh:false };   // fresh=サーバーから最新を受け取ったか（それまで送信させない）
 var refreshTimer = null;
 function qparam(k){ try{ return new URLSearchParams(location.search).get(k) || ""; }catch(e){ return ""; } }
 function hasAdminParam(){ return qparam('admin') === '1'; }
 function isTrialMode(){ return qparam('mode') === 'trial'; }
 function isProfileMode(){ return qparam('mode') === 'profile'; }
+
+/* URLの追加情報は、LIFFの初期化で復元されてから読む。 */
+function applyEntryMode_(){
+  state.entryMode = qparam('mode');
+  state.mode = (state.entryMode === 'trial' || state.entryMode === 'profile') ? state.entryMode : '';
+  state.trialDay = qparam('day');
+}
+function bookingMode_(){
+  if (!state.hasProfile) return 'profile';
+  if (state.entryMode === 'profile' && !state.profileCompleted) return 'profile';
+  if (state.accountTier === 'declined' || state.accountTier === 'expelled') return 'unavailable';
+  if (state.accountTier === 'trial') return 'trial';
+  if (state.accountTier === 'member' || state.accountTier === 'semi') return '';
+  // 旧APIでも体験者を投票フォームに案内しない。
+  return !state.canVote || state.entryMode === 'trial' ? 'trial' : '';
+}
+function goToBooking(){
+  state.profileCompleted = true;
+  state.mode = bookingMode_();
+  renderHead_(); render(); updateSubmitBtn();
+}
 
 /* 前回の表示内容を端末に保存しておき、次に開いたときはLINEの初期化を待たずにすぐ出す。
    最新の内容が届くまでは送信ボタンを押せないので、古い内容のまま保存されることはない。 */
@@ -56,7 +78,7 @@ function saveSnapshot(){
   try{ localStorage.setItem(SNAP_KEY, JSON.stringify({
     userId: state.userId, lineName: state.lineName,
     practices: state.practices, roster: state.roster, mine: state.mine, myGuests: state.myGuests,
-    myTrials: state.myTrials, canVote: state.canVote, hasProfile: state.hasProfile, votingPaused: state.votingPaused,
+    myTrials: state.myTrials, canVote: state.canVote, hasProfile: state.hasProfile, votingPaused: state.votingPaused, accountTier: state.accountTier,
     monthlyLimit: state.monthlyLimit, unlimited: state.unlimited, myRemaining: state.myRemaining,
     isMember: state.isMember, isAdmin: state.isAdmin, ts: Date.now()
   })); }catch(e){}
@@ -73,6 +95,7 @@ function applySnapshot_(s){
   state.practices = s.practices; state.roster = s.roster || [];
   state.mine = s.mine || []; state.myGuests = s.myGuests || []; state.myTrials = s.myTrials || [];
   state.canVote = s.canVote !== false; state.hasProfile = s.hasProfile !== false;
+  state.accountTier = s.accountTier || '';
   state.monthlyLimit = Number(s.monthlyLimit) > 0 ? Number(s.monthlyLimit) : 4;
   state.unlimited = s.unlimited === true; state.myRemaining = s.myRemaining || {};
   state.isMember = !!s.isMember; state.isAdmin = !!s.isAdmin;
@@ -159,17 +182,16 @@ function handleAuthFail(d){ if (d && d.relogin){ try{ liff.login(); }catch(e){} 
 
 /* ---------------- 起動 ---------------- */
 function boot(){
-  if (isTrialMode()){ state.mode = 'trial'; state.trialDay = qparam('day'); }
-  if (isProfileMode()){ state.mode = 'profile'; }
   // LINEの初期化（1〜3秒）を待たずに、前回の内容をすぐ表示する
   var snap = loadSnapshot();
-  if (snap){ applySnapshot_(snap); paintSnapshot_(); }
+  if (snap){ applySnapshot_(snap); state.mode = bookingMode_(); paintSnapshot_(); }
 
   if (typeof liff === 'undefined'){
     showMsg('LINEの読み込みに失敗しました。通信環境を確認して開き直してください。','err'); return;
   }
   liff.init({ liffId: LIFF_ID })
     .then(function(){
+      applyEntryMode_();
       if (!liff.isLoggedIn()){ liff.login(); return null; }
       // IDトークンの中身にユーザーIDと名前が入っているので、プロフィール取得の通信を省く
       var dec = null;
@@ -190,7 +212,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v4.7 (09/26)';
+var APP_VERSION = 'v4.8 (10/09)';
 var FEW_LEFT_THRESHOLD = 3; // 残り数名バッジのしきい値（自分が入れる枠が3以下なら「残り数名」）
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
@@ -239,7 +261,7 @@ function renderHead_(){
       '<h1>初回アンケート</h1>' +
       '<p class="sub">p.b.q への友だち追加ありがとうございます。<br>' +
       '練習日の申し込みに進むために、はじめに4つだけ教えてください。<b>1分で終わります。</b></p>' + name +
-      '<div class="refline"><span class="ver">' + APP_VERSION + '</span></div></div>';
+      '<div class="refline"><span class="ver">' + APP_VERSION + '</span><button onclick="retryLoadAll()">更新</button></div></div>';
     return;
   }
   if (state.mode === 'trial'){
@@ -248,7 +270,7 @@ function renderHead_(){
       '<h1>体験に申し込む</h1>' +
       '<p class="sub">行きたい日を<b>1つ</b>選んで送信してください。体験枠には限りがあり、満席の日は選べません。<br>' +
       '送信すると当日の持ち物・流れをLINEにお送りします。</p>' + name +
-      '<div class="refline"><span class="ver">' + APP_VERSION + '</span></div></div>';
+      '<div class="refline"><span class="ver">' + APP_VERSION + '</span><button onclick="retryLoadAll()">更新</button></div></div>';
     return;
   }
   q('head').innerHTML =
@@ -276,6 +298,7 @@ function resetForOtherUser_(){
   state.practices = []; state.roster = []; state.mine = []; state.myGuests = []; state.myTrials = [];
   state.selected = {}; state.touched = false; state.myRemaining = {};
   state.canVote = true; state.hasProfile = true; state.isAdmin = false; state.isMember = false;
+  state.accountTier = ''; state.profileCompleted = false; state.trialDraft = null;
   q('root').innerHTML = '';
 }
 
@@ -304,7 +327,7 @@ function seedFromServer(){
 /* ---------------- データ取得 ---------------- */
 function loadAll(){
   state.loadFailed = false; updateSubmitBtn();
-  apiGet({ api:'bootstrap', userId: state.userId, name: state.lineName, idToken: state.idToken })
+  return apiGet({ api:'bootstrap', userId: state.userId, name: state.lineName, idToken: state.idToken })
     .then(function(d){
       if (!d.ok){ if (handleAuthFail(d)) return; state.loadFailed = true; updateSubmitBtn(); markLive(false); showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
       state.practices = d.practices; state.roster = d.roster;
@@ -312,6 +335,7 @@ function loadAll(){
       state.isMember = !!d.isMember; state.isAdmin = !!d.isAdmin;
       state.monthlyLimit = Number(d.monthlyLimit) > 0 ? Number(d.monthlyLimit) : 4;
       state.canVote = d.canVote !== false;
+      state.accountTier = d.accountTier || '';
       state.votingPaused = d.votingPaused === true;
       state.unlimited = d.unlimited === true;
       state.myRemaining = d.myRemaining || {};
@@ -319,8 +343,7 @@ function loadAll(){
       state.myProfile = d.myProfile || null;
       state.wards = d.wards || [];
       // アンケート未回答なら、どの画面から来ても回答画面に固定する
-      if (!state.hasProfile) state.mode = 'profile';
-      else if (state.mode === 'profile' && !isProfileMode()) state.mode = '';
+      state.mode = bookingMode_();
       if (state.isAdmin && hasAdminParam() && !state.adminViewInit){ state.adminViewInit = true; state.adminView = true; loadAdmin(); }
       state.fresh = true;
       seedFromServer();
@@ -332,6 +355,18 @@ function loadAll(){
       scheduleRefresh();
     })
     .catch(function(e){ state.loadFailed = true; updateSubmitBtn(); markLive(false); showMsg('つながりにくくなっています（' + (e && e.message ? e.message : e) + '）。\n少し待ってから「更新」を押すか、画面を閉じて開き直してください。', 'err'); scheduleRefresh(); });
+}
+function retryLoadAll(){
+  if (state.busy || state.profileBusy) return;
+  if (state.mode === 'trial' && q('tr-day')){
+    state.trialDraft = {};
+    ['day','name','age','gender','ref'].forEach(function(k){
+      var input = q('tr-' + k); state.trialDraft[k] = input ? input.value : '';
+    });
+  }
+  state.fresh = false;
+  showMsg('最新の内容を読み込んでいます…','');
+  return loadAll().then(function(){ if (state.fresh && !state.loadFailed) showMsg('',''); });
 }
 
 /* ---------------- 管理モード（運営のみ） ---------------- */
@@ -586,6 +621,10 @@ function renderVotingPaused(){
 function render(){
   if (!state.hasProfile){ renderProfile(); return; }
   if (state.adminView){ renderAdmin(); return; }
+  if (state.mode === 'unavailable'){
+    q('root').innerHTML = '<div class="msg">現在このアカウントでは参加申し込みをご利用いただけません。参加については公式LINEのトークで運営にご相談ください。</div>';
+    q('footer').style.display = 'none'; return;
+  }
   if (state.mode === 'profile'){ renderProfile(); return; }
   if (state.mode === 'trial'){ renderTrial(); return; }
   if (state.votingPaused && !state.isAdmin){ renderVotingPaused(); return; }
@@ -875,7 +914,8 @@ function renderProfile(){
     +   '<label for="pf-gender">性別</label>'
     +   '<select id="pf-gender">' + genOpt('男性') + genOpt('女性') + genOpt('その他') + '</select>'
     +   '<div class="gform-btns"><button class="add" onclick="submitProfile()">'
-    +     (done ? 'この内容に変更する' : '回答して申し込みに進む') + '</button></div>'
+    +     (done ? 'この内容に変更する' : '回答して申し込みに進む') + '</button>'
+    +     (done ? '<button onclick="goToBooking()">参加申し込みに進む</button>' : '') + '</div>'
     + '</div></div>';
 
   q('root').innerHTML = h;
@@ -914,11 +954,13 @@ function submitProfile(){
       state.profileBusy = false;
       if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + (res.error||''),'err'); render(); return; }
       state.hasProfile = true;
-      state.mode = '';
+      state.profileCompleted = true;
+      state.accountTier = res.tier || state.accountTier;
+      if (state.accountTier) state.canVote = state.accountTier === 'member' || state.accountTier === 'semi';
+      state.mode = bookingMode_();
       showMsg('','');
       q('result').innerHTML = '<div class="result"><h2>✅ 回答ありがとうございます</h2>'
-        + '<div class="note">メニューが切り替わりました。トーク画面を一度閉じて開き直すと、'
-        + '下のメニューから練習日の申し込みができるようになります。</div></div>';
+        + '<div class="note">続けて、この画面から参加する練習日を選べます。</div></div>';
       window.scrollTo(0,0);
       renderHead_();
       loadAll();
@@ -978,7 +1020,8 @@ function renderTrial(){
   if (!state.session){ renderSessionPicker(); return; }
   h += sesTagHtml();
 
-  var preset = state.trialDay || (mt ? mt.practiceId : '');
+  var draft = state.trialDraft;
+  var preset = (draft && draft.day) || state.trialDay || (mt ? mt.practiceId : '');
   var opts = practicesIn(state.session).map(function(p){
     var left = trialLeft(p.id);
     var tp = [p.time, p.place].filter(function(s){return s;}).join(' ');
@@ -988,11 +1031,12 @@ function renderTrial(){
     var leftLabel = (left <= 2) ? '残りわずか！' : 'まだ空きあります！';
     return '<option value="' + esc(p.id) + '"' + selAttr + '>' + esc(lbl) + '（' + leftLabel + '）</option>';
   }).join('');
+  opts = '<option value="">参加する日程を選んでください</option>' + opts;
 
-  var nm = (mt && mt.name) || state.lineName || '';
-  var ag = (mt && mt.age) || '';
-  var gd = (mt && mt.gender) || '男性';
-  var rf = (mt && mt.referrer) || '';
+  var nm = draft ? draft.name : ((mt && mt.name) || state.lineName || '');
+  var ag = draft ? draft.age : ((mt && mt.age) || '');
+  var gd = draft ? draft.gender : ((mt && mt.gender) || '男性');
+  var rf = draft ? draft.ref : ((mt && mt.referrer) || '');
   function genOpt(v){ return '<option' + (v===gd?' selected':'') + '>' + v + '</option>'; }
 
   if (!practicesIn(state.session).length){
@@ -1068,6 +1112,7 @@ function submitTrial(){
       if (!res.ok){ if (handleAuthFail(res) || handleNeedProfile(res)) return; showMsg('送信に失敗しました: ' + (res.error||''),'err'); render(); return; }
       if (res.full){ showMsg('その日は体験枠が満席です。別の日を選んでください。','err'); state.trialForm = true; loadAll(); return; }
       state.trialForm = false;
+      state.trialDraft = null;
       showMsg('','');
       q('result').innerHTML = '<div class="result"><h2>✅ 体験を申し込みました</h2>'
         + '<div class="note">当日の持ち物・流れ・集合場所を、LINEのトークにお送りしました。ご確認ください。'
