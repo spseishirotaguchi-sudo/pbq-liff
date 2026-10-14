@@ -42,7 +42,7 @@ var state = { userId:"", lineName:"", idToken:"",
               monthlyLimit:4, canVote:true, unlimited:false, myRemaining:{}, session:null,
               mode:"", trialDay:"", trialForm:false,
               hasProfile:true, myProfile:null, wards:[], profileBusy:false,
-              accountTier:'', entryMode:'', profileCompleted:false, trialDraft:null,
+              accountTier:'', entryMode:'', profileCompleted:false, trialDraft:null, profileDraft:null,
               fresh:false };   // fresh=サーバーから最新を受け取ったか（それまで送信させない）
 var refreshTimer = null;
 function qparam(k){ try{ return new URLSearchParams(location.search).get(k) || ""; }catch(e){ return ""; } }
@@ -67,8 +67,10 @@ function bookingMode_(){
 }
 function goToBooking(){
   state.profileCompleted = true;
-  state.mode = bookingMode_();
-  renderHead_(); render(); updateSubmitBtn();
+  state.profileDraft = null;
+  state.fresh = false;
+  showMsg('練習日を読み込んでいます…','');
+  return loadAll();
 }
 
 /* 前回の表示内容を端末に保存しておき、次に開いたときはLINEの初期化を待たずにすぐ出す。
@@ -212,7 +214,7 @@ function boot(){
     });
 }
 
-var APP_VERSION = 'v4.8 (10/09)';
+var APP_VERSION = 'v4.9 (10/14)';
 var FEW_LEFT_THRESHOLD = 3; // 残り数名バッジのしきい値（自分が入れる枠が3以下なら「残り数名」）
 
 var SES = { am:{ label:'朝の部', note:'平日 9:00-12:00', kicker:'MORNING SESSION' },
@@ -298,7 +300,7 @@ function resetForOtherUser_(){
   state.practices = []; state.roster = []; state.mine = []; state.myGuests = []; state.myTrials = [];
   state.selected = {}; state.touched = false; state.myRemaining = {};
   state.canVote = true; state.hasProfile = true; state.isAdmin = false; state.isMember = false;
-  state.accountTier = ''; state.profileCompleted = false; state.trialDraft = null;
+  state.accountTier = ''; state.profileCompleted = false; state.trialDraft = null; state.profileDraft = null;
   q('root').innerHTML = '';
 }
 
@@ -327,10 +329,12 @@ function seedFromServer(){
 /* ---------------- データ取得 ---------------- */
 function loadAll(){
   state.loadFailed = false; updateSubmitBtn();
-  return apiGet({ api:'bootstrap', userId: state.userId, name: state.lineName, idToken: state.idToken })
+  // 初回アンケートは申込履歴や参加者一覧に依存させない。
+  var profileOnly = !state.profileCompleted && (state.entryMode === 'profile' || !state.hasProfile);
+  return apiGet({ api:profileOnly ? 'profile_bootstrap' : 'bootstrap', userId: state.userId, name: state.lineName, idToken: state.idToken })
     .then(function(d){
       if (!d.ok){ if (handleAuthFail(d)) return; state.loadFailed = true; updateSubmitBtn(); markLive(false); showMsg('データ取得に失敗: ' + d.error, 'err'); return; }
-      state.practices = d.practices; state.roster = d.roster;
+      state.practices = d.practices || []; state.roster = d.roster || [];
       state.mine = d.mine || []; state.myGuests = d.myGuests || []; state.myTrials = d.myTrials || [];
       state.isMember = !!d.isMember; state.isAdmin = !!d.isAdmin;
       state.monthlyLimit = Number(d.monthlyLimit) > 0 ? Number(d.monthlyLimit) : 4;
@@ -358,6 +362,7 @@ function loadAll(){
 }
 function retryLoadAll(){
   if (state.busy || state.profileBusy) return;
+  if (state.mode === 'profile') captureProfileDraft_();
   if (state.mode === 'trial' && q('tr-day')){
     state.trialDraft = {};
     ['day','name','age','gender','ref'].forEach(function(k){
@@ -449,7 +454,9 @@ function renderAdmin(){
 }
 
 function silentRefresh(manual){
-  if (state.busy || state.guestForm || state.trialForm) return;
+  if (state.busy || state.profileBusy || state.guestForm || state.trialForm) return;
+  // 入力中のアンケートを自動更新で描き直すと、回答が消えてしまう。
+  if (state.mode === 'profile' || !state.hasProfile) return;
   if (state.mode === 'trial'){ if (!manual) scheduleRefresh(); return; }
   apiGet({ api:'roster', idToken: state.idToken })
     .then(function(d){
@@ -466,8 +473,8 @@ function silentRefresh(manual){
   if (manual) scheduleRefresh();
 }
 function scheduleRefresh(){
-  if (state.mode === 'trial') return;
   clearTimeout(refreshTimer);
+  if (state.mode === 'trial' || state.mode === 'profile' || !state.hasProfile) return;
   refreshTimer = setTimeout(function(){
     if (document.hidden || state.busy || state.guestForm){ scheduleRefresh(); return; }
     silentRefresh(false);
@@ -880,8 +887,14 @@ function renderResult(results){
 }
 
 /* ---------------- 友だち追加時アンケート ---------------- */
+function captureProfileDraft_(){
+  if (!q('pf-name')) return;
+  var value = function(id){ return q(id) ? q(id).value : ''; };
+  state.profileDraft = { realName:value('pf-name'), year:value('pf-y'), month:value('pf-m'), day:value('pf-d'), ward:value('pf-ward'), gender:value('pf-gender') };
+}
 function renderProfile(){
-  var p = state.myProfile || {};
+  var draft = state.profileDraft;
+  var p = draft || state.myProfile || {};
   var wards = (state.wards && state.wards.length) ? state.wards
     : ['東区','博多区','中央区','南区','城南区','早良区','西区','福岡市外'];
   var wardOpts = '<option value="">選んでください</option>' + wards.map(function(w){
@@ -890,9 +903,9 @@ function renderProfile(){
   function genOpt(v){ return '<option' + (p.gender === v ? ' selected' : '') + '>' + v + '</option>'; }
 
   var bd = String(p.birthday || '').split('-');
-  var by = bd[0] || '';
-  var bm = bd[1] ? String(Number(bd[1])) : '';
-  var bdd = bd[2] ? String(Number(bd[2])) : '';
+  var by = draft ? draft.year : (bd[0] || '');
+  var bm = draft ? draft.month : (bd[1] ? String(Number(bd[1])) : '');
+  var bdd = draft ? draft.day : (bd[2] ? String(Number(bd[2])) : '');
 
   var done = state.hasProfile;
   var h = '<div class="gbox">'
@@ -905,9 +918,9 @@ function renderProfile(){
     +   '<input id="pf-name" placeholder="例：田中 太郎" autocomplete="name" value="' + esc(p.realName || '') + '">'
     +   '<label>生年月日</label>'
     +   '<div class="bdrow">'
-    +     '<input id="pf-y" aria-label="生まれた年・西暦" class="y" type="number" inputmode="numeric" placeholder="1998" value="' + esc(by) + '"><em>年</em>'
-    +     '<input id="pf-m" aria-label="生まれた月" class="m" type="number" inputmode="numeric" placeholder="4" value="' + esc(bm) + '"><em>月</em>'
-    +     '<input id="pf-d" aria-label="生まれた日" class="d" type="number" inputmode="numeric" placeholder="15" value="' + esc(bdd) + '"><em>日</em>'
+    +     '<input id="pf-y" aria-label="生まれた年・西暦" class="y" type="text" inputmode="numeric" pattern="[0-9０-９]*" placeholder="1998" value="' + esc(by) + '"><em>年</em>'
+    +     '<input id="pf-m" aria-label="生まれた月" class="m" type="text" inputmode="numeric" pattern="[0-9０-９]*" placeholder="4" value="' + esc(bm) + '"><em>月</em>'
+    +     '<input id="pf-d" aria-label="生まれた日" class="d" type="text" inputmode="numeric" pattern="[0-9０-９]*" placeholder="15" value="' + esc(bdd) + '"><em>日</em>'
     +   '</div>'
     +   '<label for="pf-ward">お住まいの区</label>'
     +   '<select id="pf-ward">' + wardOpts + '</select>'
@@ -916,6 +929,7 @@ function renderProfile(){
     +   '<div class="gform-btns"><button class="add" onclick="submitProfile()">'
     +     (done ? 'この内容に変更する' : '回答して申し込みに進む') + '</button>'
     +     (done ? '<button onclick="goToBooking()">参加申し込みに進む</button>' : '') + '</div>'
+    + '<p class="note">うまく送信できない場合は、上の「更新」を押して再度お試しください。入力内容はこの画面内で保持します。</p>'
     + '</div></div>';
 
   q('root').innerHTML = h;
@@ -924,12 +938,14 @@ function renderProfile(){
 
 function submitProfile(){
   if (state.profileBusy) return;
+  captureProfileDraft_();
   if (!state.fresh){ showMsg('読み込み中です。数秒待ってから送信してください。',''); return; }
   if (!state.userId){ showMsg('LINEユーザー情報が取得できていません。開き直してください。','err'); return; }
   var realName = (q('pf-name') && q('pf-name').value || '').trim();
-  var yy = (q('pf-y') && q('pf-y').value || '').trim();
-  var mm = (q('pf-m') && q('pf-m').value || '').trim();
-  var dd = (q('pf-d') && q('pf-d').value || '').trim();
+  var digits = function(s){ return String(s || '').trim().replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);}); };
+  var yy = digits(q('pf-y') && q('pf-y').value);
+  var mm = digits(q('pf-m') && q('pf-m').value);
+  var dd = digits(q('pf-d') && q('pf-d').value);
   var ward     = q('pf-ward') ? q('pf-ward').value : '';
   var gender   = q('pf-gender') ? q('pf-gender').value : '';
 
@@ -937,9 +953,11 @@ function submitProfile(){
   if (!yy || !mm || !dd){ showMsg('生年月日を、年・月・日すべて入力してください。','err'); return; }
   var ny = Number(yy), nm = Number(mm), nd = Number(dd);
   var thisYear = new Date().getFullYear();
-  if (!(ny >= 1930 && ny <= thisYear)){ showMsg('生年月日の「年」は西暦4桁で入力してください（例：1998）。','err'); return; }
-  if (!(nm >= 1 && nm <= 12)){ showMsg('生年月日の「月」は1〜12で入力してください。','err'); return; }
-  if (!(nd >= 1 && nd <= 31)){ showMsg('生年月日の「日」は1〜31で入力してください。','err'); return; }
+  if (!/^\d{4}$/.test(yy) || !(ny >= 1930 && ny <= thisYear)){ showMsg('生年月日の「年」は西暦4桁で入力してください（例：1998）。','err'); return; }
+  if (!/^\d{1,2}$/.test(mm) || !(nm >= 1 && nm <= 12)){ showMsg('生年月日の「月」は1〜12で入力してください。','err'); return; }
+  if (!/^\d{1,2}$/.test(dd) || !(nd >= 1 && nd <= 31)){ showMsg('生年月日の「日」は1〜31で入力してください。','err'); return; }
+  var birthDate = new Date(ny, nm-1, nd);
+  if (birthDate.getMonth() !== nm-1 || birthDate.getDate() !== nd || birthDate > new Date()){ showMsg('生年月日を確認してください。存在する日付を入力してください。','err'); return; }
   var birthday = ny + '-' + two(nm) + '-' + two(nd);
   if (!ward){ showMsg('お住まいの区を選んでください。','err'); return; }
 
@@ -954,6 +972,7 @@ function submitProfile(){
       state.profileBusy = false;
       if (!res.ok){ if (handleAuthFail(res)) return; showMsg('送信に失敗しました: ' + (res.error||''),'err'); render(); return; }
       state.hasProfile = true;
+      state.profileDraft = null;
       state.profileCompleted = true;
       state.accountTier = res.tier || state.accountTier;
       if (state.accountTier) state.canVote = state.accountTier === 'member' || state.accountTier === 'semi';
@@ -965,7 +984,7 @@ function submitProfile(){
       renderHead_();
       loadAll();
     })
-    .catch(function(e){ state.profileBusy = false; showMsg('送信に失敗しました（通信）: ' + e,'err'); render(); });
+    .catch(function(e){ state.profileBusy = false; showMsg('送信結果を確認できませんでした。入力内容は保持しています。「更新」で確認し、未回答ならもう一度送信してください。','err'); render(); });
 }
 
 /** 申込み系APIが「アンケート未回答」で弾いたときに、回答画面へ戻す */
