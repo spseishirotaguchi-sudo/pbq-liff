@@ -2,10 +2,10 @@
 
 公開ページ：`preparing/schedule.html`。メンバー用リッチメニューの既存URLを継続使用する。
 
-`ActivitySchedule.gs` は既存のGASへ追加するモジュール。既存の `doPost` でJSONを読み取った直後に、次を追加する。
+`ActivitySchedule.gs` は既存のGASへ追加するモジュール。既存の `doPost` でJSONを読み取った直後に、次を追加する。現在の運用コードには `doPost` の過去定義が残っているため、必ず最後の有効な定義にも追加する（変数名は `b`）。
 
 ```js
-if (body.action === 'schedule') return jsonOut_(activityScheduleResponse_(body));
+if (b.action === 'schedule') return jsonOut_(activityScheduleResponse_(b));
 ```
 
 LINEの検証APIでIDトークンの署名・発行元・対象チャネル・有効期限を検証し、そのsubとpeopleのG列が一致するmember/semiだけに予定を返す。既存のREQUIRE_LOGIN設定がfalseでも認証を省略しない。会員区分はキャッシュしない。予定データは公開ファイルやlocalStorageに保存しない。
