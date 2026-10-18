@@ -33,6 +33,24 @@
       get(month) { const entry = entries.get(month); if (!entry || entry.expires <= now()) { entries.delete(month); return null; } return entry.data; }
     };
   }
+  // 公開予定だけの短期保存。失効時刻を読み直しで延長しない。
+  function createSnapshotStore(getStorage, version, now = Date.now) {
+    const key = 'pbq.schedule.public.v1';
+    return {
+      read() {
+        try {
+          const saved = JSON.parse(getStorage().getItem(key) || 'null');
+          if (!saved || saved.version !== version || !Number.isFinite(saved.expires) || saved.expires <= now() || saved.savedAt > now() || !saved.data || !Array.isArray(saved.data.items) || !/^(20\d{2})-(0[1-9]|1[0-2])$/.test(saved.data.month) || !Number.isFinite(Date.parse(saved.data.updatedAt))) return null;
+          return { ...saved.data, expiresAt: saved.expires };
+        } catch (_) { return null; }
+      },
+      write(data) {
+        const savedAt = now(), expires = Math.min(savedAt + 300000, Number(data.expiresAt) || savedAt + 300000);
+        const publicData = { month: data.month, items: data.items, months: data.months || {}, updatedAt: data.updatedAt, warningCount: data.warningCount || 0, expiresAt: expires };
+        try { const text = JSON.stringify({ version, savedAt, expires, data: publicData }); if (text.length < 150000) getStorage().setItem(key, text); } catch (_) {}
+      }
+    };
+  }
   function liveItem(item, now = Date.now()) {
     if (item.kind !== 'event') return item;
     const copy = { ...item }; let status = copy.manualStatus || copy.status;
@@ -63,5 +81,5 @@
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//p.b.q//Activity Schedule//JA', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT', 'UID:' + icsEscape(item.id) + '@schedule.pbq', 'DTSTAMP:' + stamp(now), 'DTSTART:' + stamp(item.startAt), 'DTEND:' + stamp(item.endAt), 'SUMMARY:' + icsEscape('p.b.q ' + item.title), 'LOCATION:' + icsEscape([item.place, item.address].filter(Boolean).join(' ')), 'DESCRIPTION:' + icsEscape(eventDetails(item)), 'STATUS:CONFIRMED', 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR'];
     return lines.map(foldLine).join('\r\n') + '\r\n';
   }
-  return { createMonthCache, liveItem, shiftMonth, tokyoMonth, coversDay, monthCells, escapeHtml, httpsUrl, dateLabel, googleUrl, ics };
+  return { createSnapshotStore, createMonthCache, liveItem, shiftMonth, tokyoMonth, coversDay, monthCells, escapeHtml, httpsUrl, dateLabel, googleUrl, ics };
 });

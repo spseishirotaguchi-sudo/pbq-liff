@@ -31,9 +31,9 @@ test('近い5か月を1回の表読取で返し、次回はスプレッドシー
  for(const name of ['practices','イベント','venues'])assert.equal(h.reads[name],before[name]);assert.equal(h.reads.people,undefined);
 });
 test('関係ない表の編集では予定を失効せず、会場・予定・表構造の編集で破棄',()=>{
- const h=harness();h.request();h.edit('people');assert.equal(h.request().timing.cacheHit,true);h.edit('venues');assert.equal(h.request().timing.cacheHit,false);
+ const h=harness();h.request();h.edit('people');assert.equal(h.request().timing.cacheHit,true);const old=h.reads.venues;h.edit('venues');assert.equal(h.reads.venues,old+1);assert.equal(h.request().timing.cacheHit,true);
  h.rows.practices[0][9]='変更';h.edit('practices');assert.equal(h.request().code,'CONFIGURATION');
- const b=harness();b.request();b.ctx.activityScheduleOnChange({changeType:'INSERT_ROW'});assert.equal(b.request().timing.cacheHit,false);
+ const b=harness();b.request();b.ctx.activityScheduleOnChange({changeType:'INSERT_ROW'});assert.equal(b.request().timing.cacheHit,true);assert.equal(b.reads.practices,2);
 });
 test('キャッシュが物理的に残っても10分以上古い予定は再取得',()=>{
  const h=harness();h.request();let saved=JSON.parse(h.cache.get('schedule_data_v1'));saved.builtAt=Date.now()-601000;h.cache.set('schedule_data_v1',JSON.stringify(saved));
@@ -66,4 +66,21 @@ test('ログイン・トークン・会員名簿なしで掲載済み予定を�
 });
 test('予定の匿名閲覧を許可しても、非掲載行や投票・会員のデータは返さない',()=>{
  const h=harness();h.rows.practices[1][9]=false;const d=h.request();assert.equal(d.items.length,1);assert.equal(d.items[0].id,'practice-1105pm');assert.ok(!('capacity' in d.items[0]));assert.ok(!('tier' in d.items[0]));
+});
+
+test('端末の短期保存は公開予定のみに限定、5分を超えず、読み直しで期限を延長しない',()=>{
+ let now=1000;const map=new Map(),storage={getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v)},store=core.createSnapshotStore(()=>storage,'test',()=>now);
+ store.write({month:'2026-11',items:[e],months:{'2026-12':[]},updatedAt:'2026-10-18T00:00Z',expiresAt:601000,idToken:'must-not-store',people:['must-not-store']});
+ assert.ok(![...map.values()].join('').includes('must-not-store'));assert.equal(store.read().expiresAt,301000);now=300999;assert.equal(store.read().items.length,1);now=301000;assert.equal(store.read(),null);
+ now=1000;store.write({month:'2026-11',items:[],updatedAt:'2026-10-18T00:00Z',expiresAt:2000});now=2000;assert.equal(store.read(),null);
+});
+test('端末保存が禁止・破損・古い形式でも、通常の予定取得を妨げない',()=>{
+ const blocked=core.createSnapshotStore(()=>{throw Error('blocked');},'test');assert.equal(blocked.read(),null);assert.doesNotThrow(()=>blocked.write({items:[]}));
+ for(const raw of ['broken','{}',JSON.stringify({version:'old',expires:Date.now()+10000,data:{items:[]}}),JSON.stringify({version:'test',expires:Date.now()+10000,data:{month:'2026-11',items:[],updatedAt:'invalid'}})]) {
+  const store=core.createSnapshotStore(()=>({getItem:()=>raw}),'test');assert.equal(store.read(),null);
+ }
+});
+test('事前準備は古くなったキャッシュだけを更新し、閲覧リクエストの再読取を省く',()=>{
+ const h=harness();h.request();h.ctx.warmActivityScheduleCache();assert.equal(h.reads.practices,1);
+ let data=JSON.parse(h.cache.get('schedule_data_v1'));data.builtAt=Date.now()-250000;h.cache.set('schedule_data_v1',JSON.stringify(data));h.ctx.warmActivityScheduleCache();assert.equal(h.reads.practices,2);assert.equal(h.request().timing.cacheHit,true);
 });

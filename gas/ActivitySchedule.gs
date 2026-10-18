@@ -101,10 +101,10 @@ function invalidateActivityScheduleCache() {
   cache.remove('schedule_data_v1');
 }
 function activityScheduleOnEdit(e) {
-  if(e && e.range && [SHEET_PRACTICES,SHEET_VENUES,'イベント'].indexOf(e.range.getSheet().getName())>=0) invalidateActivityScheduleCache();
+  if(e && e.range && [SHEET_PRACTICES,SHEET_VENUES,'イベント'].indexOf(e.range.getSheet().getName())>=0) { invalidateActivityScheduleCache();warmActivityScheduleCache(); }
 }
 function activityScheduleOnChange(e) {
-  if(!e || e.changeType!=='EDIT') invalidateActivityScheduleCache();
+  if(!e || e.changeType!=='EDIT') { invalidateActivityScheduleCache();warmActivityScheduleCache(); }
 }
 /* 手動編集の即時失効用。既存のトリガーには触れず、重複も作らない。 */
 function installActivityScheduleCacheTriggers() {
@@ -114,6 +114,7 @@ function installActivityScheduleCacheTriggers() {
       var builder=ScriptApp.newTrigger(pair[0]).forSpreadsheet(id);builder[pair[1]]().create();
     }
   });
+  if(!triggers.some(function(t){return t.getHandlerFunction()==='keepWarm';}))ScriptApp.newTrigger('keepWarm').timeBased().everyMinutes(5).create();
   invalidateActivityScheduleCache();
   var data=scheduleDataset_(book);
   console.log(JSON.stringify({event:'schedule_cache_ready',version:ACTIVITY_SCHEDULE_PERFORMANCE,count:data.items.length,issues:data.issues.length}));
@@ -127,10 +128,14 @@ function scheduleLiveItem_(item,now) {
   }
   copy.status=status;copy.canApply=status==='申込受付中'&&!!copy.applyUrl;return copy;
 }
-function scheduleDataset_(book) {
+function warmActivityScheduleCache() {
+  try { scheduleDataset_(null,true); }
+  catch(err) { console.warn(JSON.stringify({event:'schedule_warm_failed',code:err.scheduleCode||'TEMPORARY'})); }
+}
+function scheduleDataset_(book,warm) {
   var cache=CacheService.getScriptCache(),epoch=cache.get('schedule_data_epoch')||'0',data=null,now=Date.now();
   try { data=JSON.parse(cache.get('schedule_data_v1')||'null'); } catch(ignored) {}
-  if(data && data.version===ACTIVITY_SCHEDULE_PERFORMANCE && data.epoch===epoch && now>=data.builtAt && now-data.builtAt<ACTIVITY_SCHEDULE_TTL*1000 && Array.isArray(data.items)) {
+  if(data && data.version===ACTIVITY_SCHEDULE_PERFORMANCE && data.epoch===epoch && now>=data.builtAt && now-data.builtAt<ACTIVITY_SCHEDULE_TTL*1000 && (!warm || now-data.builtAt<240000) && Array.isArray(data.items)) {
     data.cacheHit=true;return data;
   }
   data=scheduleBuild_('',book);data.builtAt=Date.now();data.epoch=epoch;data.version=ACTIVITY_SCHEDULE_PERFORMANCE;

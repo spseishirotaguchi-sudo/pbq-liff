@@ -7,11 +7,17 @@
   const monthCache = core.createMonthCache();
   const days = ['日', '月', '火', '水', '木', '金', '土'];
   const version = 'schedule-square-20261018';
+  const snapshot = core.createSnapshotStore(() => window.localStorage, 'schedule-fast-open-20261018');
   function setNotice(text, error) { byId('notice').textContent = text; byId('notice').classList.toggle('error', !!error); }
   function clearData() { state.items = []; state.expanded.clear(); state.selectedDate = ''; byId('month-grid').replaceChildren(); byId('event-list').replaceChildren(); byId('calendar-section').hidden = true; }
   function recovery(kind) { byId('recovery').innerHTML = kind === 'retry' ? '<button type="button" data-retry>もう一度読み込む</button>' : ''; }
   async function init() {
     ++state.request; monthCache.clear(); clearData(); recovery('');
+    const saved = snapshot.read();
+    if (saved) {
+      monthCache.put(saved); const cached = monthCache.get(state.month);
+      if (cached) { root.dataset.loadSource = 'saved'; showMonth(cached); setBusy(false); state.lastLoaded = Date.now(); await loadMonth(true, true); return; }
+    }
     await loadMonth();
   }
   function setBusy(busy) { state.loading = busy; byId('prev').disabled = busy || state.month <= '2020-01'; byId('next').disabled = busy || state.month >= '2099-12'; }
@@ -22,12 +28,13 @@
     byId('updated').textContent = '更新確認 ' + new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' }).format(new Date(data.updatedAt));
     byId('calendar-section').hidden = false;
   }
-  async function loadMonth(force = false) {
+  async function loadMonth(force = false, background = false) {
     const request = ++state.request, cached = !force && monthCache.get(state.month);
     if (cached) {
       clearData(); recovery(''); root.dataset.loadSource = 'memory'; showMonth(cached); setBusy(false); return;
     }
-    clearData(); setBusy(true); recovery(''); setNotice('スケジュールを読み込んでいます…');
+    if (!background) { clearData(); setBusy(true); recovery(''); setNotice('スケジュールを読み込んでいます…'); }
+    else byId('updated').textContent += ' ・最新情報を確認中';
     const started = performance.now();
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = controller ? setTimeout(() => controller.abort(), 25000) : null;
@@ -37,13 +44,14 @@
       if (!response.ok) throw new Error('接続が混み合っています。もう一度お試しください。');
       const data = await response.json();
       if (request !== state.request) return;
-      if (!data.ok) { monthCache.clear(); setNotice(data.error || '読み込めませんでした。もう一度お試しください。', true); recovery('retry'); return; }
+      if (!data.ok) throw new Error('読み込めませんでした。もう一度お試しください。');
       if (data.version !== version || data.month !== state.month || !Array.isArray(data.items)) throw new Error('表示の更新を確認しています。ページを開き直してお試しください。');
       root.dataset.loadSource = 'network'; root.dataset.requestMs = String(Math.round(performance.now() - started));
       if (data.timing) { root.dataset.serverMs = String(data.timing.totalMs); root.dataset.sourceCacheHit = String(data.timing.cacheHit); }
-      monthCache.put(data); state.lastLoaded = Date.now(); showMonth(data);
+      snapshot.write(data); monthCache.put(data); state.lastLoaded = Date.now(); showMonth(data);
     } catch (err) {
       if (request !== state.request) return;
+      if (background) { byId('updated').textContent = '最新情報を確認できませんでした。少し待って開き直してください。'; return; }
       monthCache.clear(); clearData(); setNotice(err.name === 'AbortError' ? '読み込みに時間がかかっています。もう一度お試しください。' : 'スケジュールを読み込めませんでした。通信環境を確認してお試しください。', true); recovery('retry');
     } finally { if (timer) clearTimeout(timer); if (request === state.request) setBusy(false); }
   }
