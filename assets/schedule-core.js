@@ -15,6 +15,33 @@
     const [year, m] = monthParts(month), offset = new Date(Date.UTC(year, m - 1, 1)).getUTCDay(), count = new Date(Date.UTC(year, m, 0)).getUTCDate();
     return Array.from({ length: Math.ceil((offset + count) / 7) * 7 }, (_, index) => { const day = index - offset + 1; if (day < 1 || day > count) return null; const date = `${month}-${pad(day)}`; return { day, date, items: items.filter(item => coversDay(item, date)) }; });
   }
+  // メモリ内だけで保持。予定・トークンをブラウザの永続ストレージに保存しない。
+  function createMonthCache(ttl = 300000, now = Date.now) {
+    const entries = new Map();
+    return {
+      clear() { entries.clear(); },
+      put(data, authUntil = Infinity) {
+        const received = now(), expires = Math.min(received + ttl, Number(data.expiresAt) || received + ttl, authUntil);
+        for (const [month, value] of entries) if (value.expires <= received) entries.delete(month);
+        const months = { ...(data.months || {}), [data.month]: data.items };
+        for (const [month, items] of Object.entries(months)) {
+          if (!/^(20\d{2})-(0[1-9]|1[0-2])$/.test(month) || !Array.isArray(items)) continue;
+          entries.set(month, { expires, data: { items, updatedAt: data.updatedAt, warningCount: data.warningCount } });
+        }
+        while (entries.size > 15) entries.delete(entries.keys().next().value);
+      },
+      get(month) { const entry = entries.get(month); if (!entry || entry.expires <= now()) { entries.delete(month); return null; } return entry.data; }
+    };
+  }
+  function liveItem(item, now = Date.now()) {
+    if (item.kind !== 'event') return item;
+    const copy = { ...item }; let status = copy.manualStatus || copy.status;
+    if (status === '申込受付中') {
+      if (Date.parse(copy.endAt) <= now || (copy.entryClosesAt && Date.parse(copy.entryClosesAt) < now)) status = '募集締切済';
+      else if (copy.entryOpensAt && Date.parse(copy.entryOpensAt) > now) status = '申込受付前';
+    }
+    copy.status = status; copy.canApply = status === '申込受付中' && !!httpsUrl(copy.applyUrl); return copy;
+  }
   function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function httpsUrl(s) { try { const url = new URL(String(s)); return url.protocol === 'https:' && !url.username && !url.password ? url.href : ''; } catch (_) { return ''; } }
   function dateLabel(item) { const text = `${+item.date.slice(5, 7)}月${+item.date.slice(8)}日`; return item.date === item.endDate ? text : `${text}〜${+item.endDate.slice(5, 7)}月${+item.endDate.slice(8)}日`; }
@@ -36,5 +63,5 @@
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//p.b.q//Activity Schedule//JA', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT', 'UID:' + icsEscape(item.id) + '@schedule.pbq', 'DTSTAMP:' + stamp(now), 'DTSTART:' + stamp(item.startAt), 'DTEND:' + stamp(item.endAt), 'SUMMARY:' + icsEscape('p.b.q ' + item.title), 'LOCATION:' + icsEscape([item.place, item.address].filter(Boolean).join(' ')), 'DESCRIPTION:' + icsEscape(eventDetails(item)), 'STATUS:CONFIRMED', 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR'];
     return lines.map(foldLine).join('\r\n') + '\r\n';
   }
-  return { shiftMonth, tokyoMonth, coversDay, monthCells, escapeHtml, httpsUrl, dateLabel, googleUrl, ics };
+  return { createMonthCache, liveItem, shiftMonth, tokyoMonth, coversDay, monthCells, escapeHtml, httpsUrl, dateLabel, googleUrl, ics };
 });

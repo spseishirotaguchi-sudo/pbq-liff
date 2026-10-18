@@ -1,14 +1,32 @@
 # 活動スケジュール（2026-10-18）
 
+## 読み込み改善（2026-10-18）
+
+- LIFF SDKの読込・初期化・LINE検証・people照合を、活動スケジュール画面から除去。
+- 予定のGET取得は既存doGetの冒頭で `action=schedule` の場合だけ分岐する。既存POSTのschedule分岐も残して互換性を維持。
+- 予定の正規化データをScriptCacheへ最大600秒保持。キャッシュ命中時はスプレッドシートを開かない。
+- 初回に前後2か月もまとめて返す。同じ画面の月送りはメモリ内のデータで即表示し、最大5分で再確認する。予定データはlocalStorage/sessionStorageに保存しない。
+- `installActivityScheduleCacheTriggers()` は編集・構造変更用の2トリガーだけを重複せず追加する。他のトリガーを変更しない。practices・イベント・venuesの手動編集で予定キャッシュを失効させる。
+- Apps Script/API経由の書込は編集トリガーが動かないため、既存 `clearCache()` からも失効させる。それ以外の更新も600秒の期限で再取得する。
+- 受付開始・募集締切・開催終了は、キャッシュ内でも現在時刻で再判定する。
+- 既存表示中のページへの変更反映は最大5分。ページを開き直すと再取得する。
+
 公開ページ：`preparing/schedule.html`。メンバー用リッチメニューの既存URLを継続使用する。
 
-`ActivitySchedule.gs` は既存のGASへ追加するモジュール。既存の `doPost` でJSONを読み取った直後に、次を追加する。現在の運用コードには `doPost` の過去定義が残っているため、必ず最後の有効な定義にも追加する（変数名は `b`）。
+`ActivitySchedule.gs` は既存のGASへ追加するモジュール。doGetにも次の分岐を冒頭に追加する。
+
+```js
+if (e && e.parameter && e.parameter.action === 'schedule')
+  return jsonOut_(activityScheduleResponse_({month:e.parameter.month,prefetch:e.parameter.prefetch==='1'}));
+```
+
+既存の `doPost` でJSONを読み取った直後に、次を追加する。現在の運用コードには `doPost` の過去定義が残っているため、必ず最後の有効な定義にも追加する（変数名は `b`）。
 
 ```js
 if (b.action === 'schedule') return jsonOut_(activityScheduleResponse_(b));
 ```
 
-LINEの検証APIでIDトークンの署名・発行元・対象チャネル・有効期限を検証し、そのsubとpeopleのG列が一致するmember/semiだけに予定を返す。既存のREQUIRE_LOGIN設定がfalseでも認証を省略しない。会員区分はキャッシュしない。予定データは公開ファイルやlocalStorageに保存しない。
+2026-10-18の運営者指示により、活動スケジュールだけはLINEログインを不要とした。URLを知っていればLINE外でも閲覧できる。検索避けのnoindexは閲覧制限ではない。掲載チェックのある活動情報のみを返し、個人情報・投票内容・会員名簿は返さない。参加投票、体験申込、会員管理など既存APIの認証・権限は変更しない。
 
 ## 入力
 
@@ -27,6 +45,6 @@ iPhone実機のLINEアプリでのファイル取込は別途確認が必要。
 
 ## 検証
 
-`node --test tests/*.test.cjs`。人工データで認証拒否、tierの変更、日付またぎ、掲載状態、固定ID、申込期限、1件ICS、UTF-8行折返し、年越しを確認する。ブラウザでは幅320px・390px、同日2件、時間・場所、見出しと参加投票の同じ高さ、アクセス拒否、通信失敗を確認する。
+`node --test tests/*.test.cjs`。人工データでログインなしの予定閲覧、個人情報を含まないこと、キャッシュ期限と編集時の失効、日付またぎ、掲載状態、固定ID、申込期限、1件ICS、UTF-8行折返し、年越しを確認する。ブラウザでは幅320px・390px、同日2件、時間・場所、見出しと参加投票の同じ高さ、月送り時の通信回数、通信失敗を確認する。
 
 メインGASの会員変更・予約・LINE送信の処理は変更しない。公開時は既存Webアプリのデプロイを新バージョンへ更新し、URLを維持する。
