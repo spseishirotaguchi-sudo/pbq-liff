@@ -1,0 +1,130 @@
+--- a/gas/Code.gs
++++ b/gas/Code.gs
+@@ -56,7 +56,7 @@
+ 
+ // 会員種別
+ var TIER = { TRIAL: 'trial', SEMI: 'semi', MEMBER: 'member' };
+-// 月に投票できる練習日の数（掲載中の練習日のうち何日まで選べるか）
++// 開催年月ごと、朝の部・夜の部それぞれに投票できる練習日数
+ var MONTHLY_LIMIT = { trial: 1, semi: 2, member: 4 };
+ 
+ // entries 列(1始まり)。10-13 は体験/友達の情報、14 は紹介者名
+@@ -167,7 +167,8 @@
+       requireLogin_(p.idToken);
+       recordPerson_(p.userId || '', p.name || '');
+       if (p.api === 'profile_bootstrap') return jsonOut_(profileBootstrap_(p.userId || ''));
+-      var practices = getPractices();
++      var votingCatalog = votingPracticeCatalog_();
++      var practices = getPractices(votingCatalog);
+       var entries = getEntriesCached_();
+       var mine = getMyStuff_(p.userId || '', practices, entries);
+       var admin = isAdmin_(p.userId || '');       // ADMIN_USER_IDS の読み取りは1回にまとめる（以前は3回読んでいた）
+@@ -177,6 +178,8 @@
+         practices: practices,
+         roster: buildRoster_(practices, entries),
+         mine: mine.self,
++        myMonthlyEntries: votingMonthlyEntries_(p.userId || '', votingCatalog, entries),
++        monthlyVotingVersion: MONTHLY_VOTING_VERSION,
+         myGuests: mine.guests,
+         myTrials: mine.trials,
+         monthlyLimit: admin ? practices.length : monthlyLimitOf_(tier),
+@@ -206,7 +209,7 @@
+       safeCachePut_(adminCache, 'admin_list_json', adminOut, 60);
+       return ContentService.createTextOutput(adminOut).setMimeType(ContentService.MimeType.JSON);
+     }
+-    return jsonOut_({ ok: true, info: 'p.b.q 練習日申込 API', scheduleVersion: ACTIVITY_SCHEDULE_VERSION, bookingVersion: 'trial-routing-20261009', membershipVersion: MEMBERSHIP_FLOW_VERSION, memberFlagVersion: MEMBER_FLAG_VERSION, profileVersion: PROFILE_FLOW_VERSION });
++    return jsonOut_({ ok: true, info: 'p.b.q 練習日申込 API', monthlyVotingVersion: MONTHLY_VOTING_VERSION, scheduleVersion: ACTIVITY_SCHEDULE_VERSION, bookingVersion: 'trial-routing-20261009', membershipVersion: MEMBERSHIP_FLOW_VERSION, memberFlagVersion: MEMBER_FLAG_VERSION, profileVersion: PROFILE_FLOW_VERSION });
+   } catch (err) {
+     logBookingFailure_('bootstrap', bookingFailureCode_(err));
+     return jsonOut_({ ok: false, error: String((err && err.message) || err), relogin: /__RELOGIN__/.test(String(err)) });
+@@ -281,29 +284,11 @@
+   return head + (place ? ' @' + place : '');
+ }
+ 
+-function getPractices() {
+-  var cache = CacheService.getScriptCache();
+-  var c = safeCacheGet_(cache, 'practices_json');
+-  var cancelled = cancelledPracticeIds_();
+-  if (c) return JSON.parse(c).filter(function(p) { return !cancelled[p.id]; });
+-  var sh = ss_().getSheetByName(SHEET_PRACTICES);
+-  if (!sh || sh.getLastRow() < 2) return [];
+-  var values = sh.getRange(2, 1, sh.getLastRow() - 1, 9).getValues();
+-  var out = values
+-    .filter(function(r) { return String(r[0]).trim() !== '' && String(r[5]).toUpperCase() !== 'FALSE' && !cancelled[String(r[0]).trim()]; })
+-    .map(function(r) {
+-      var date = String(r[1]).trim(), time = String(r[2]).trim(), place = String(r[3]).trim();
+-      return {
+-        id: String(r[0]).trim(), date: date, time: time, place: place,
+-        label: composeLabel_(date, time, place),
+-        capacity: Number(r[4]) > 0 ? Number(r[4]) : DEFAULT_CAPACITY,
+-        capTrial: Number(r[6]) > 0 ? Number(r[6]) : DEFAULT_TRIAL_CAP,
+-        capSemi:  Number(r[7]) > 0 ? Number(r[7]) : DEFAULT_SEMI_CAP,
+-        session:  normalizeSession_(r[8]) || sessionOf_(time, place)
+-      };
+-    });
+-  safeCachePut_(cache, 'practices_json', JSON.stringify(out), 300);
+-  return out;
++function getPractices(catalog) {
++  // 開催年・表示・開催中止の変更を、そのリクエストの最新行で一貫して判定する。
++  catalog = catalog || votingPracticeCatalog_();
++  return Object.keys(catalog).filter(function(id) { return catalog[id].visible; })
++    .map(function(id) { return catalog[id].practice; });
+ }
+ 
+ function getEntriesCached_() {
+@@ -1267,7 +1252,7 @@
+     requireLogin_(payload && payload.idToken);
+     var uid = String((payload && payload.lineUserId) || '').trim();
+     var lineName = String((payload && payload.lineName) || '').trim();
+-    var selected = ((payload && payload.practiceIds) || []).map(String);
++    var selected = ((payload && payload.practiceIds) || []).map(String).filter(function(pid, i, all) { return all.indexOf(pid) === i; });
+     var guestsIn = (payload && payload.guests);
+     if (!Array.isArray(guestsIn)) guestsIn = [];
+     if (!uid) throw new Error('LINEユーザー情報が取得できませんでした。');
+@@ -1275,8 +1260,9 @@
+     if (isVotingPaused_() && !isAdmin_(uid)) throw new Error('ただいま参加投票を一時停止しています。再開のお知らせまで少々お待ちください。');
+ 
+     var sh = ss_().getSheetByName(SHEET_ENTRIES);
++    var votingCatalog = votingPracticeCatalog_();
+     var practiceById = {};
+-    getPractices().forEach(function(p) { practiceById[p.id] = p; });
++    getPractices(votingCatalog).forEach(function(p) { practiceById[p.id] = p; });
+ 
+     var lastRow = sh.getLastRow();
+     var data = lastRow >= 2 ? sh.getRange(2, 1, lastRow - 1, ENTRIES_COLS).getValues() : [];
+@@ -1304,33 +1290,9 @@
+     }
+     var myEtype = etypeForTier_(tier);
+ 
+-    // 月に選べる練習日の上限。朝の部・夜の部それぞれで数える。
+-    // 運営(ADMIN_USER_IDS)は全日程に出るため上限なし。
+-    //
+-    // 重要: 上限は「新しく増やすとき」だけに効かせる。
+-    // すでに上限を超えて申し込んでいる人（上限を入れる前からの申込など）が
+-    // 「外す」ことまで拒否されると、取り消せなくなってしまうため。
++    // ロック取得後の最新practices・entriesで、開催年月×部ごとに検証する。
+     var validSelected = selected.filter(function(pid) { return !!practiceById[pid]; });
+-    if (!isAdmin_(uid)) {
+-      var limit = monthlyLimitOf_(tier);
+-      var already = {};
+-      rows.forEach(function(en) {
+-        if (en.uid !== uid || isTrialPool_(en) || en.status === 'cancelled') return;
+-        already[en.pid] = true;
+-      });
+-      var bySession = {}, addedBySession = {};
+-      validSelected.forEach(function(pid) {
+-        var ses = practiceById[pid].session;
+-        bySession[ses] = (bySession[ses] || 0) + 1;
+-        if (!already[pid]) addedBySession[ses] = (addedBySession[ses] || 0) + 1;
+-      });
+-      Object.keys(bySession).forEach(function(ses) {
+-        if (bySession[ses] > limit && (addedBySession[ses] || 0) > 0) {
+-          throw new Error((SESSION_LABEL[ses] || ses) + 'に参加できるのは月に' + limit + '回までです。' +
+-            bySession[ses] + '日が選ばれています。減らしてから送信してください。');
+-        }
+-      });
+-    }
++    validateMonthlyVoting_(uid, tier, validSelected, votingCatalog, rows);
+ 
+     // メンバー枠(self)・準メンバー枠(semi)・体験枠(guest+trial)を別々に数える
+     var poolCount = { member: {}, semi: {}, trial: {} };

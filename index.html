@@ -39,7 +39,7 @@ var state = { userId:"", lineName:"", idToken:"",
               selected:{}, guests:[], expanded:{}, guestForm:false,
               hadEntries:false, busy:false, touched:false,
               isMember:false, isAdmin:false, adminView:false, adminLoaded:false, people:[],
-              monthlyLimit:4, canVote:true, unlimited:false, myRemaining:{}, session:null,
+              monthlyLimit:4, canVote:true, unlimited:false, myRemaining:{}, myMonthlyEntries:[], session:null,
               mode:"", trialDay:"", trialForm:false,
               hasProfile:true, myProfile:null, wards:[], profileBusy:false,
               accountTier:'', entryMode:'', profileCompleted:false, trialDraft:null, profileDraft:null,
@@ -75,12 +75,13 @@ function goToBooking(){
 
 /* 前回の表示内容を端末に保存しておき、次に開いたときはLINEの初期化を待たずにすぐ出す。
    最新の内容が届くまでは送信ボタンを押せないので、古い内容のまま保存されることはない。 */
-var SNAP_KEY = 'pbq_snap_v2';
+var SNAP_KEY = 'pbq_snap_monthly_v1';
 function saveSnapshot(){
   try{ localStorage.setItem(SNAP_KEY, JSON.stringify({
     userId: state.userId, lineName: state.lineName,
     practices: state.practices, roster: state.roster, mine: state.mine, myGuests: state.myGuests,
     myTrials: state.myTrials, canVote: state.canVote, hasProfile: state.hasProfile, votingPaused: state.votingPaused, accountTier: state.accountTier,
+    myMonthlyEntries: state.myMonthlyEntries,
     monthlyLimit: state.monthlyLimit, unlimited: state.unlimited, myRemaining: state.myRemaining,
     isMember: state.isMember, isAdmin: state.isAdmin, ts: Date.now()
   })); }catch(e){}
@@ -95,6 +96,7 @@ function loadSnapshot(){
 function applySnapshot_(s){
   state.userId = s.userId; state.lineName = s.lineName || '';
   state.practices = s.practices; state.roster = s.roster || [];
+  state.myMonthlyEntries = s.myMonthlyEntries || [];
   state.mine = s.mine || []; state.myGuests = s.myGuests || []; state.myTrials = s.myTrials || [];
   state.canVote = s.canVote !== false; state.hasProfile = s.hasProfile !== false;
   state.accountTier = s.accountTier || '';
@@ -298,7 +300,7 @@ function paintSnapshot_(){
 }
 function resetForOtherUser_(){
   state.practices = []; state.roster = []; state.mine = []; state.myGuests = []; state.myTrials = [];
-  state.selected = {}; state.touched = false; state.myRemaining = {};
+  state.selected = {}; state.touched = false; state.myRemaining = {}; state.myMonthlyEntries = [];
   state.canVote = true; state.hasProfile = true; state.isAdmin = false; state.isMember = false;
   state.accountTier = ''; state.profileCompleted = false; state.trialDraft = null; state.profileDraft = null;
   q('root').innerHTML = '';
@@ -343,6 +345,7 @@ function loadAll(){
       state.votingPaused = d.votingPaused === true;
       state.unlimited = d.unlimited === true;
       state.myRemaining = d.myRemaining || {};
+      state.myMonthlyEntries = d.myMonthlyEntries || [];
       state.hasProfile = d.hasProfile !== false;
       state.myProfile = d.myProfile || null;
       state.wards = d.wards || [];
@@ -645,7 +648,7 @@ function render(){
   var html = (state.votingPaused ? '<div class="msg err">【運営のみ表示】参加投票は一時停止中です。メンバーには停止のお知らせが表示されています。</div>' : '')
     + sesTagHtml() + '<div class="section-label"><span>02</span> 参加したい日を選択</div><p class="selection-help">チェックを外して送信すると、その日の申込みを取り消します。</p>';
   if (!inSes.length){
-    q('root').innerHTML = html + '<div class="msg err">' + SES[state.session].label + 'は今月の開催がありません。「部を変える」から選び直してください。</div>';
+    q('root').innerHTML = html + '<div class="msg err">' + SES[state.session].label + 'は募集中の開催がありません。「部を変える」から選び直してください。</div>';
     q('footer').style.display = 'none';
     return;
   }
@@ -709,9 +712,13 @@ function render(){
     if (!state.session) ll.innerHTML = '';
     else if (state.unlimited) ll.innerHTML = '運営アカウントのため、<b>すべての練習日</b>を選べます。現在 <b>' + selectedInSession(state.session) + '日</b> 選択中。';
     else {
-      var used = selectedInSession(state.session);
-      ll.innerHTML = '<b>' + SES[state.session].label + '</b>に参加できるのは月に <b>' + state.monthlyLimit
-        + '回</b>まで。現在 <b>' + used + '回</b> 選択中（残り ' + Math.max(0, state.monthlyLimit - used) + '回）。';
+      var months = {};
+      practicesIn(state.session).forEach(function(p){ if (p.monthKey) months[p.monthKey] = true; });
+      ll.innerHTML = '<b>' + SES[state.session].label + '</b>は開催月ごとに <b>' + state.monthlyLimit + '回</b>まで。'
+        + Object.keys(months).sort().map(function(month){
+          var used = monthlySelectedCount(month, state.session);
+          return '<br><b>' + month.replace('-', '年') + '月</b>：' + used + '回（残り ' + Math.max(0, state.monthlyLimit - used) + '回）';
+        }).join('');
     }
   }
   q('footer').style.display = 'block';
@@ -861,12 +868,32 @@ function updateSubmitBtn(){
     btn.textContent = 'この内容で送信'; btn.classList.remove('warn');
   }
 }
+function monthlyEntrySelected(m){
+  return m.visible === false || state.selected[m.practiceId] !== false;
+}
+function monthlySelectedCount(month, ses){
+  var counted = {};
+  // 非表示になった同月の申込も保持。表示上の絞り込みに集計を依存させない。
+  state.myMonthlyEntries.forEach(function(m){
+    if (m.monthKey === month && m.session === ses && monthlyEntrySelected(m)) counted[m.practiceId] = true;
+  });
+  state.practices.forEach(function(p){
+    if (p.monthKey === month && sessionOf(p) === ses && state.selected[p.id]) counted[p.id] = true;
+  });
+  return Object.keys(counted).length;
+}
 function toggle(pid){
-  var ses = sessionOf(pById(pid));
-  if (!state.unlimited && !state.selected[pid] && selectedInSession(ses) >= state.monthlyLimit){
-    showMsg(SES[ses].label + 'に参加できるのは月に' + state.monthlyLimit + '回までです。ほかの日のチェックを外してから選んでください。','err');
-    return;
-  } state.touched = true; state.selected[pid] = !state.selected[pid]; render();
+  var p = pById(pid), ses = sessionOf(p);
+  if (!p) return;
+  if (!state.unlimited && !state.selected[pid]){
+    if (!p.monthKey || state.myMonthlyEntries.some(function(m){ return !m.monthKey && monthlyEntrySelected(m); })){
+      showMsg('開催年月を確認できません。更新しても解消しない場合は運営にご確認ください。','err'); return;
+    }
+    if (monthlySelectedCount(p.monthKey, ses) >= state.monthlyLimit){
+      showMsg(p.monthKey + 'の' + SES[ses].label + 'に参加できるのは月に' + state.monthlyLimit + '回までです。同じ月のほかの日のチェックを外してから選んでください。','err');
+      return;
+    }
+  } showMsg('',''); state.touched = true; state.selected[pid] = !state.selected[pid]; render();
   var picks = document.querySelectorAll('[data-pid]');
   for (var i=0;i<picks.length;i++) if (picks[i].getAttribute('data-pid') === pid){ picks[i].focus({preventScroll:true}); break; }
 }
