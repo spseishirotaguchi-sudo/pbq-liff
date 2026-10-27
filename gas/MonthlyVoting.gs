@@ -1,5 +1,5 @@
 /** 開催年月（JST）×朝夜の参加上限。表示状態と独立して本人の日数を数える。 */
-var MONTHLY_VOTING_VERSION = 'practice-month-20261025';
+var MONTHLY_VOTING_VERSION = 'morning-unlimited-20261027';
 
 function votingPracticeCatalog_() {
   var out = {};
@@ -36,6 +36,11 @@ function votingMonthlyEntries_(uid, catalog, entries) {
   return out;
 }
 
+/** 朝の部は準メンバーを含め無制限。夜だけ会員種別ごとの月上限を使う。 */
+function monthlyLimitForSession_(tier, session) {
+  return session === 'am' ? null : monthlyLimitOf_(tier);
+}
+
 function validateMonthlyVoting_(uid, tier, selected, catalog, entries) {
   if (isAdmin_(uid)) return;
   var existing = {}, final = {}, added = {};
@@ -50,17 +55,18 @@ function validateMonthlyVoting_(uid, tier, selected, catalog, entries) {
   });
   // 既存の上限超過者も、変更なしの再送・取消だけなら受け付ける。
   if (!Object.keys(added).length) return;
-  var counts = {}, increases = {}, limit = monthlyLimitOf_(tier);
+  var counts = {}, increases = {};
   Object.keys(final).forEach(function(pid) {
     var p = final[pid];
+    if (monthlyLimitForSession_(tier, p.session) === null) return;
     if (!p.monthKey) throw new Error('練習の開催年月を確認できません。practicesの開催日・開催年を運営にご確認ください。');
     var key = p.monthKey + '|' + p.session;
     counts[key] = (counts[key] || 0) + 1;
     if (added[pid]) increases[key] = true;
   });
   Object.keys(counts).forEach(function(key) {
-    if (counts[key] <= limit || !increases[key]) return;
-    var parts = key.split('|');
+    var parts = key.split('|'), limit = monthlyLimitForSession_(tier, parts[1]);
+    if (limit === null || counts[key] <= limit || !increases[key]) return;
     throw new Error(parts[0] + 'の' + (SESSION_LABEL[parts[1]] || parts[1]) + 'に参加できるのは月に' + limit + '回までです。' +
       counts[key] + '日が選ばれています。減らしてから送信してください。');
   });
@@ -96,7 +102,17 @@ function verifyMonthlyVotingReadOnly() {
   var hidden = ids('2026-11',4).map(function(id) { sample[id].visible=false; return {uid:uid,pid:id,etype:'self',status:'confirmed'}; });
   rejects(['2026-11-4'],hidden);
   accepts(ids('2026-12',4).concat(ids('2027-01',4)));
-  var result = {readOnly:true,monthlyVotingVersion:MONTHLY_VOTING_VERSION,practiceCount:Object.keys(catalog).length,monthCounts:months,syntheticChecks:4};
+  var morningIds = [];
+  for (var j=0; j<8; j++) {
+    var morningId='morning-'+j; morningIds.push(morningId);
+    sample[morningId]={visible:true,cancelled:false,practice:{id:morningId,monthKey:'2026-11',session:'am'}};
+  }
+  validateMonthlyVoting_(uid,TIER.MEMBER,morningIds,sample,[]);
+  validateMonthlyVoting_(uid,TIER.SEMI,morningIds,sample,[]);
+  var semiNightRejected=false;
+  try {validateMonthlyVoting_(uid,TIER.SEMI,ids('2026-12',3),sample,[]);} catch(err) {if(String(err).indexOf('月に2回')>=0)semiNightRejected=true;else throw err;}
+  if(!semiNightRejected)throw new Error('夜の部の準メンバー上限確認に失敗しました。');
+  var result = {readOnly:true,morningUnlimited:true,monthlyVotingVersion:MONTHLY_VOTING_VERSION,practiceCount:Object.keys(catalog).length,monthCounts:months,syntheticChecks:7};
   Logger.log(JSON.stringify(result));
   return result;
 }

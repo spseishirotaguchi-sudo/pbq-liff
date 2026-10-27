@@ -39,7 +39,7 @@ var state = { userId:"", lineName:"", idToken:"",
               selected:{}, guests:[], expanded:{}, guestForm:false,
               hadEntries:false, busy:false, touched:false,
               isMember:false, isAdmin:false, adminView:false, adminLoaded:false, people:[],
-              monthlyLimit:4, canVote:true, unlimited:false, myRemaining:{}, myMonthlyEntries:[], session:null,
+              monthlyLimit:4, monthlySessionLimits:{}, canVote:true, unlimited:false, myRemaining:{}, myMonthlyEntries:[], session:null,
               mode:"", trialDay:"", trialForm:false,
               hasProfile:true, myProfile:null, wards:[], profileBusy:false,
               accountTier:'', entryMode:'', profileCompleted:false, trialDraft:null, profileDraft:null,
@@ -82,7 +82,7 @@ function saveSnapshot(){
     practices: state.practices, roster: state.roster, mine: state.mine, myGuests: state.myGuests,
     myTrials: state.myTrials, canVote: state.canVote, hasProfile: state.hasProfile, votingPaused: state.votingPaused, accountTier: state.accountTier,
     myMonthlyEntries: state.myMonthlyEntries,
-    monthlyLimit: state.monthlyLimit, unlimited: state.unlimited, myRemaining: state.myRemaining,
+    monthlyLimit: state.monthlyLimit, monthlySessionLimits: state.monthlySessionLimits, unlimited: state.unlimited, myRemaining: state.myRemaining,
     isMember: state.isMember, isAdmin: state.isAdmin, ts: Date.now()
   })); }catch(e){}
 }
@@ -102,6 +102,7 @@ function applySnapshot_(s){
   state.canVote = s.canVote !== false; state.hasProfile = s.hasProfile !== false;
   state.accountTier = s.accountTier || '';
   state.monthlyLimit = Number(s.monthlyLimit) > 0 ? Number(s.monthlyLimit) : 4;
+  state.monthlySessionLimits = s.monthlySessionLimits || {};
   state.unlimited = s.unlimited === true; state.myRemaining = s.myRemaining || {};
   state.isMember = !!s.isMember; state.isAdmin = !!s.isAdmin;
   state.votingPaused = s.votingPaused === true;
@@ -301,7 +302,7 @@ function paintSnapshot_(){
 }
 function resetForOtherUser_(){
   state.practices = []; state.roster = []; state.adminRoster = {}; state.mine = []; state.myGuests = []; state.myTrials = [];
-  state.selected = {}; state.touched = false; state.myRemaining = {}; state.myMonthlyEntries = [];
+  state.selected = {}; state.touched = false; state.myRemaining = {}; state.myMonthlyEntries = []; state.monthlySessionLimits = {};
   state.canVote = true; state.hasProfile = true; state.isAdmin = false; state.isMember = false;
   state.accountTier = ''; state.profileCompleted = false; state.trialDraft = null; state.profileDraft = null;
   q('root').innerHTML = '';
@@ -342,6 +343,7 @@ function loadAll(){
       state.isMember = !!d.isMember; state.isAdmin = !!d.isAdmin;
       state.adminRoster = state.isAdmin ? (d.adminRoster || {}) : {};
       state.monthlyLimit = Number(d.monthlyLimit) > 0 ? Number(d.monthlyLimit) : 4;
+      state.monthlySessionLimits = d.monthlySessionLimits || {};
       state.canVote = d.canVote !== false;
       state.accountTier = d.accountTier || '';
       state.votingPaused = d.votingPaused === true;
@@ -556,7 +558,13 @@ function fallbackCopy(){
 }
 
 function selectedCount(){ var n = 0; for (var k in state.selected) if (state.selected[k]) n++; return n; }
-function remainingPicks(){ return Math.max(0, state.monthlyLimit - selectedCount()); }
+function sessionLimit_(ses){
+  if (state.unlimited) return null;
+  var limits = state.monthlySessionLimits || {};
+  if (Object.prototype.hasOwnProperty.call(limits, ses)) return limits[ses] === null ? null : Number(limits[ses]);
+  return ses === 'am' ? null : state.monthlyLimit;
+}
+function remainingPicks(){ var limit = sessionLimit_(state.session || 'pm'); return limit === null ? Infinity : Math.max(0, limit - selectedInSession(state.session || 'pm')); }
 
 function pById(pid){ for (var i=0;i<state.practices.length;i++) if (state.practices[i].id===pid) return state.practices[i]; return null; }
 function rosterFor(pid){ for (var i=0;i<state.roster.length;i++) if (state.roster[i].id===pid) return state.roster[i]; return null; }
@@ -610,7 +618,7 @@ function renderSessionPicker(){
       + '<span class="go" aria-hidden="true">↗</span></button>';
   }
   q('root').innerHTML = '<div class="section-label"><span>01</span> 参加する時間帯を選んでください</div><div class="seswrap">' + card('am') + card('pm') + '</div>'
-    + '<p class="seshint">' + (state.mode === 'trial' ? '体験は1日を選んでお申し込みください。' : ('朝・夜それぞれ、' + (state.unlimited ? 'すべての日を選べます。' : '月' + state.monthlyLimit + '回まで参加できます。'))) + '<br>開催時間・体育館は、次の日程一覧で確認できます。</p>';
+    + '<p class="seshint">' + (state.mode === 'trial' ? '体験は1日を選んでお申し込みください。' : (state.unlimited ? '朝・夜とも、すべての日を選べます。' : '朝の部は回数制限なし。夜の部は月' + sessionLimit_('pm') + '回まで参加できます。')) + '<br>開催時間・体育館は、次の日程一覧で確認できます。</p>';
   q('footer').style.display = 'none';
 }
 
@@ -734,13 +742,14 @@ function render(){
   if (ll){
     if (!state.session) ll.innerHTML = '';
     else if (state.unlimited) ll.innerHTML = '運営アカウントのため、<b>すべての練習日</b>を選べます。現在 <b>' + selectedInSession(state.session) + '日</b> 選択中。';
+    else if (sessionLimit_(state.session) === null) ll.innerHTML = '<b>朝の部</b>は<b>回数制限なし</b>。<br>現在 <b>' + selectedInSession(state.session) + '日</b> 選択中。';
     else {
-      var months = {};
+      var limit = sessionLimit_(state.session), months = {};
       practicesIn(state.session).forEach(function(p){ if (p.monthKey) months[p.monthKey] = true; });
-      ll.innerHTML = '<b>' + SES[state.session].label + '</b>は開催月ごとに <b>' + state.monthlyLimit + '回</b>まで。'
+      ll.innerHTML = '<b>' + SES[state.session].label + '</b>は開催月ごとに <b>' + limit + '回</b>まで。'
         + Object.keys(months).sort().map(function(month){
           var used = monthlySelectedCount(month, state.session);
-          return '<br><b>' + month.replace('-', '年') + '月</b>：' + used + '回（残り ' + Math.max(0, state.monthlyLimit - used) + '回）';
+          return '<br><b>' + month.replace('-', '年') + '月</b>：' + used + '回（残り ' + Math.max(0, limit - used) + '回）';
         }).join('');
     }
   }
@@ -906,14 +915,14 @@ function monthlySelectedCount(month, ses){
   return Object.keys(counted).length;
 }
 function toggle(pid){
-  var p = pById(pid), ses = sessionOf(p);
+  var p = pById(pid), ses = sessionOf(p), limit = sessionLimit_(ses);
   if (!p) return;
-  if (!state.unlimited && !state.selected[pid]){
-    if (!p.monthKey || state.myMonthlyEntries.some(function(m){ return !m.monthKey && monthlyEntrySelected(m); })){
+  if (limit !== null && !state.selected[pid]){
+    if (!p.monthKey || state.myMonthlyEntries.some(function(m){ return m.session === ses && !m.monthKey && monthlyEntrySelected(m); })){
       showMsg('開催年月を確認できません。更新しても解消しない場合は運営にご確認ください。','err'); return;
     }
-    if (monthlySelectedCount(p.monthKey, ses) >= state.monthlyLimit){
-      showMsg(p.monthKey + 'の' + SES[ses].label + 'に参加できるのは月に' + state.monthlyLimit + '回までです。同じ月のほかの日のチェックを外してから選んでください。','err');
+    if (monthlySelectedCount(p.monthKey, ses) >= limit){
+      showMsg(p.monthKey + 'の' + SES[ses].label + 'に参加できるのは月に' + limit + '回までです。同じ月のほかの日のチェックを外してから選んでください。','err');
       return;
     }
   } showMsg('',''); state.touched = true; state.selected[pid] = !state.selected[pid]; render();
