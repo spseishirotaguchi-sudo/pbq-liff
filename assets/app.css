@@ -8,3 +8,12 @@
 @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}
 .hero.compact{padding-top:18px;padding-bottom:12px;margin-bottom:20px}.hero.compact>.sub:first-of-type{display:none}.hero.compact h1{font-size:25px;margin:0 0 8px}.hero.compact #limit-lead{font-size:12px;margin:0 0 9px;line-height:1.8}.hero.compact .who{margin-top:0;padding-top:4px;border:0}.hero.compact .account-label{display:inline;margin-right:8px}.hero.compact .refline{margin-top:4px}.hero.compact .refline button{min-height:36px}
 .b-wait{background:#f5ebd9;color:#725019}
+
+/* 運営にだけ返す情報の確認欄。投票操作・通常の参加者リストから視覚的に分ける。 */
+.ops-panel{margin:0 18px 16px;padding:14px 15px;border:1px solid var(--line);border-left:3px solid var(--ink-2);border-radius:4px;background:#f6f7f3;font-size:12px;color:var(--ink);line-height:1.8}
+.ops-title{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--ink-2)}
+.ops-usage{display:flex;flex-wrap:wrap;gap:6px 18px;margin:5px 0 12px}.ops-usage b{font-variant-numeric:tabular-nums}
+.ops-row+.ops-row{border-top:1px solid var(--line);padding-top:9px;margin-top:9px}.ops-label{font-weight:700}.ops-label b{margin-left:4px}
+.ops-names{display:flex;flex-wrap:wrap;gap:4px 13px;list-style:none;margin:4px 0 0;padding:0}.ops-names li{max-width:100%;overflow-wrap:anywhere}
+.ops-empty,.ops-note{color:var(--ink-3)}.ops-note{margin:5px 0 0}.ops-tag{display:inline-block;font-size:10px;margin-left:5px;padding:0 5px;border:1px solid #ccd2c7;border-radius:3px;color:var(--ink-2);vertical-align:baseline}
+@media(max-width:360px){.ops-panel{margin-right:12px;margin-left:12px;padding:12px}}
