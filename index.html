@@ -716,6 +716,7 @@ function render(){
       +     '<div class="d">' + esc(p.date || p.label) + '</div>'
       +     (tp ? '<div class="tp">' + esc(tp) + '</div>' : '')
       +     '<div class="meta">受付 ' + conf + ' 名' + (wait > 0 ? '　・　キャンセル待ち ' + wait + ' 名' : '') + (tn > 0 ? '　・　体験 ' + tn + ' 名' : '') + '</div>'
+      +     (p.monthlyLimitExempt === true ? '<div class="tp">特例：この日は月の回数制限に含みません</div>' : '')
       +     '<div>' + badge + '</div>'
       +   '</div>'
       + '</div>'
@@ -907,18 +908,18 @@ function monthlySelectedCount(month, ses){
   var counted = {};
   // 非表示になった同月の申込も保持。表示上の絞り込みに集計を依存させない。
   state.myMonthlyEntries.forEach(function(m){
-    if (m.monthKey === month && m.session === ses && monthlyEntrySelected(m)) counted[m.practiceId] = true;
+    if (m.monthlyLimitExempt !== true && m.monthKey === month && m.session === ses && monthlyEntrySelected(m)) counted[m.practiceId] = true;
   });
   state.practices.forEach(function(p){
-    if (p.monthKey === month && sessionOf(p) === ses && state.selected[p.id]) counted[p.id] = true;
+    if (p.monthlyLimitExempt !== true && p.monthKey === month && sessionOf(p) === ses && state.selected[p.id]) counted[p.id] = true;
   });
   return Object.keys(counted).length;
 }
 function toggle(pid){
   var p = pById(pid), ses = sessionOf(p), limit = sessionLimit_(ses);
   if (!p) return;
-  if (limit !== null && !state.selected[pid]){
-    if (!p.monthKey || state.myMonthlyEntries.some(function(m){ return m.session === ses && !m.monthKey && monthlyEntrySelected(m); })){
+  if (limit !== null && p.monthlyLimitExempt !== true && !state.selected[pid]){
+    if (!p.monthKey || state.myMonthlyEntries.some(function(m){ return m.monthlyLimitExempt !== true && m.session === ses && !m.monthKey && monthlyEntrySelected(m); })){
       showMsg('開催年月を確認できません。更新しても解消しない場合は運営にご確認ください。','err'); return;
     }
     if (monthlySelectedCount(p.monthKey, ses) >= limit){

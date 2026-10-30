@@ -1,5 +1,11 @@
 /** 開催年月（JST）×朝夜の参加上限。表示状態と独立して本人の日数を数える。 */
-var MONTHLY_VOTING_VERSION = 'morning-unlimited-20261027';
+var MONTHLY_VOTING_VERSION = 'special-practice-20261119-v1';
+
+/** 2026/11/19 東体育館の追加枠だけ月上限の対象外。ID再利用や日程変更へ広げない。 */
+function votingMonthlyExemptPractice_(id, day, time, place, session) {
+  return id === '1119pm' && day === '2026-11-19' && time === '20:00-22:00'
+    && place === '東体育館' && session === 'pm';
+}
 
 function votingPracticeCatalog_() {
   var out = {};
@@ -8,16 +14,19 @@ function votingPracticeCatalog_() {
     if (out[id]) throw new Error('練習IDが重複しています。practicesを確認してください。');
     var date = String(r[1]).trim(), time = String(r[2]).trim(), place = String(r[3]).trim();
     var cancelled = practiceIsCancelled_(r[11]);
+    var day = scheduleDay_(r[1], r[10]);
+    var session = normalizeSession_(r[8]) || sessionOf_(time, place);
     out[id] = {
       visible: String(r[5]).toUpperCase() !== 'FALSE' && !cancelled,
       cancelled: cancelled,
       practice: {
         id: id, date: date, time: time, place: place, label: composeLabel_(date, time, place),
-        monthKey: scheduleDay_(r[1], r[10]).slice(0, 7),
+        monthKey: day.slice(0, 7),
+        monthlyLimitExempt: votingMonthlyExemptPractice_(id, day, time, place, session),
         capacity: Number(r[4]) > 0 ? Number(r[4]) : DEFAULT_CAPACITY,
         capTrial: Number(r[6]) > 0 ? Number(r[6]) : DEFAULT_TRIAL_CAP,
         capSemi: Number(r[7]) > 0 ? Number(r[7]) : DEFAULT_SEMI_CAP,
-        session: normalizeSession_(r[8]) || sessionOf_(time, place)
+        session: session
       }
     };
   });
@@ -31,7 +40,7 @@ function votingMonthlyEntries_(uid, catalog, entries) {
     var c = catalog[en.pid];
     if (en.uid !== uid || isTrialPool_(en) || en.status === 'cancelled' || !c || c.cancelled || seen[en.pid]) return;
     seen[en.pid] = true;
-    out.push({practiceId: en.pid, monthKey: c.practice.monthKey, session: c.practice.session, visible: c.visible});
+    out.push({practiceId: en.pid, monthKey: c.practice.monthKey, session: c.practice.session, visible: c.visible, monthlyLimitExempt: c.practice.monthlyLimitExempt === true});
   });
   return out;
 }
@@ -58,7 +67,7 @@ function validateMonthlyVoting_(uid, tier, selected, catalog, entries) {
   var counts = {}, increases = {};
   Object.keys(final).forEach(function(pid) {
     var p = final[pid];
-    if (monthlyLimitForSession_(tier, p.session) === null) return;
+    if (p.monthlyLimitExempt === true || monthlyLimitForSession_(tier, p.session) === null) return;
     if (!p.monthKey) throw new Error('練習の開催年月を確認できません。practicesの開催日・開催年を運営にご確認ください。');
     var key = p.monthKey + '|' + p.session;
     counts[key] = (counts[key] || 0) + 1;
@@ -112,7 +121,11 @@ function verifyMonthlyVotingReadOnly() {
   var semiNightRejected=false;
   try {validateMonthlyVoting_(uid,TIER.SEMI,ids('2026-12',3),sample,[]);} catch(err) {if(String(err).indexOf('月に2回')>=0)semiNightRejected=true;else throw err;}
   if(!semiNightRejected)throw new Error('夜の部の準メンバー上限確認に失敗しました。');
-  var result = {readOnly:true,morningUnlimited:true,monthlyVotingVersion:MONTHLY_VOTING_VERSION,practiceCount:Object.keys(catalog).length,monthCounts:months,syntheticChecks:7};
+  sample['1119pm'] = {visible:true,cancelled:false,practice:{id:'1119pm',monthKey:'2026-11',session:'pm',monthlyLimitExempt:votingMonthlyExemptPractice_('1119pm','2026-11-19','20:00-22:00','東体育館','pm')}};
+  accepts(ids('2026-11',4).concat(['1119pm']));
+  accepts(['1119pm'].concat(ids('2026-11',4)));
+  rejects(ids('2026-11',5).concat(['1119pm']));
+  var result = {readOnly:true,morningUnlimited:true,monthlyVotingVersion:MONTHLY_VOTING_VERSION,practiceCount:Object.keys(catalog).length,monthCounts:months,syntheticChecks:10,monthlyExemptPracticeIds:Object.keys(catalog).filter(function(id){return catalog[id].practice.monthlyLimitExempt === true;})};
   Logger.log(JSON.stringify(result));
   return result;
 }
