@@ -15,6 +15,23 @@
     const [year, m] = monthParts(month), offset = new Date(Date.UTC(year, m - 1, 1)).getUTCDay(), count = new Date(Date.UTC(year, m, 0)).getUTCDate();
     return Array.from({ length: Math.ceil((offset + count) / 7) * 7 }, (_, index) => { const day = index - offset + 1; if (day < 1 || day > count) return null; const date = `${month}-${pad(day)}`; return { day, date, items: items.filter(item => coversDay(item, date)) }; });
   }
+  function calendarGroups(items) {
+    const groups = [
+      { id: 'morning', title: '朝の部', items: [] },
+      { id: 'night', title: '夜の部', items: [] },
+      { id: 'other', title: 'その他の練習', items: [] },
+      { id: 'events', title: 'イベント', items: [] }
+    ];
+    for (const item of items) {
+      const index = item.kind === 'event' ? 3 : item.title === '朝の部' ? 0 : item.title === '夜の部' ? 1 : 2;
+      groups[index].items.push(item);
+    }
+    return groups.filter((group, index) => index < 2 || group.items.length);
+  }
+  function calendarTime(item) {
+    const short = value => String(value || '').replace(/^(\d{1,2}):00$/, (_, hour) => String(Number(hour))).replace(/^0(\d):/, '$1:');
+    return `${short(item.start)}-${short(item.end)}時`;
+  }
   // メモリ内だけで保持。予定・トークンをブラウザの永続ストレージに保存しない。
   function createMonthCache(ttl = 300000, now = Date.now) {
     const entries = new Map();
@@ -81,5 +98,5 @@
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//p.b.q//Activity Schedule//JA', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT', 'UID:' + icsEscape(item.id) + '@schedule.pbq', 'DTSTAMP:' + stamp(now), 'DTSTART:' + stamp(item.startAt), 'DTEND:' + stamp(item.endAt), 'SUMMARY:' + icsEscape('p.b.q ' + item.title), 'LOCATION:' + icsEscape([item.place, item.address].filter(Boolean).join(' ')), 'DESCRIPTION:' + icsEscape(eventDetails(item)), 'STATUS:CONFIRMED', 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR'];
     return lines.map(foldLine).join('\r\n') + '\r\n';
   }
-  return { createSnapshotStore, createMonthCache, liveItem, shiftMonth, tokyoMonth, coversDay, monthCells, escapeHtml, httpsUrl, dateLabel, googleUrl, ics };
+  return { calendarGroups, calendarTime, createSnapshotStore, createMonthCache, liveItem, shiftMonth, tokyoMonth, coversDay, monthCells, escapeHtml, httpsUrl, dateLabel, googleUrl, ics };
 });

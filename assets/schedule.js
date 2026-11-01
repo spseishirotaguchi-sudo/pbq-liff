@@ -62,12 +62,15 @@
     byId('month-label').textContent = `${year}年${month}月`;
     byId('month-grid').setAttribute('aria-label', `${year}年${month}月の予定`);
     const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(new Date());
-    byId('month-grid').innerHTML = core.monthCells(state.month, state.items).map(cell => {
-      if (!cell) return '<div class="day empty" aria-hidden="true"></div>';
-      const tag = cell.items.length ? 'button' : 'div', count = cell.items.length;
-      const content = count > 2 ? '<span class="cell-event"><span class="cell-title">予定' + count + '件</span></span>' : cell.items.map(item => `<span class="cell-event ${item.kind === 'event' ? 'event' : ''}${item.cancelled ? ' cancelled' : ''}"><span class="cell-title">${esc(item.shortTitle || item.title)}</span><span class="cell-time">${esc(item.start)}</span><span class="cell-place">${esc(item.place)}</span></span>`).join('');
-      const label = `${month}月${cell.day}日 ${cell.items.map(item => item.title + ' ' + item.start + '〜' + item.end + ' ' + item.place).join('、')}`;
-      return `<${tag} ${count ? `type="button" data-day="${cell.date}" aria-label="${esc(label)}" aria-expanded="${state.selectedDate === cell.date}" aria-controls="event-list"` : ''} class="day${cell.date === today ? ' today' : ''}${cell.date === state.selectedDate ? ' selected' : ''}" data-date="${cell.date}" data-count="${count}" data-many="${count > 2}"><span class="day-number">${cell.day}</span><span class="day-events">${content}</span></${tag}>`;
+    byId('month-grid').innerHTML = core.calendarGroups(state.items).map(group => {
+      const cells = core.monthCells(state.month, group.items).map((cell, index) => {
+        if (!cell) return '<div class="day empty" aria-hidden="true"></div>';
+        const tag = cell.items.length ? 'button' : 'div', count = cell.items.length;
+        const content = count > 1 ? `<span class="cell-event multiple"><span class="cell-time">予定${count}件</span><span class="cell-place">タップで確認</span></span>` : cell.items.map(item => `<span class="cell-event${item.kind === 'event' ? ' event' : ''}${item.cancelled ? ' cancelled' : ''}">${item.kind === 'event' ? `<span class="cell-event-name">${esc(item.shortTitle || item.title)}</span><span class="cell-time">${esc(core.calendarTime(item))}</span>` : `<span class="cell-time">${esc(core.calendarTime(item))}</span><span class="cell-place">${esc(item.place)}</span>`}</span>`).join('');
+        const label = `${month}月${cell.day}日 ${cell.items.map(item => item.title + ' ' + item.start + '〜' + item.end + ' ' + item.place).join('、')}`;
+        return `<${tag} ${count ? `type="button" data-day="${cell.date}" data-calendar="${group.id}" aria-label="${esc(label)}" aria-expanded="${state.selectedDate === cell.date}" aria-controls="event-list"` : ''} class="day${index % 7 === 0 ? ' sunday' : ''}${cell.date === today ? ' today' : ''}${cell.date === state.selectedDate ? ' selected' : ''}" data-date="${cell.date}" data-count="${count}"><span class="day-number">${cell.day}</span><span class="day-events">${content}</span></${tag}>`;
+      }).join('');
+      return `<section class="calendar-board" aria-labelledby="calendar-${group.id}-label"><h3 class="calendar-board-title" id="calendar-${group.id}-label">${group.title}</h3><div class="weekdays" aria-hidden="true">${days.map(day => `<span>${day}</span>`).join('')}</div><div class="month-grid" role="group" aria-label="${year}年${month}月 ${group.title}">${cells}</div></section>`;
     }).join('');
     byId('event-list').innerHTML = state.items.length ? state.items.map((item, index) => {
       const open = state.expanded.has(item.id), weekday = days[new Date(item.date + 'T00:00:00Z').getUTCDay()];
