@@ -56,6 +56,7 @@
     } finally { if (timer) clearTimeout(timer); if (request === state.request) setBusy(false); }
   }
   function entryOpen(source) { const item = core.liveItem(source); return item.canApply && item.status === '申込受付中' && !item.cancelled && (!item.entryOpensAt || Date.parse(item.entryOpensAt) <= Date.now()) && (!item.entryClosesAt || Date.parse(item.entryClosesAt) >= Date.now()) && Date.parse(item.endAt) > Date.now(); }
+  function labelWidth(text) { return Math.max(1, Array.from(String(text || '')).reduce((width, char) => width + (/^[\x20-\x7e]$/.test(char) ? 0.62 : 1), 0)).toFixed(2); }
   function render() {
     state.items = state.items.map(item => core.liveItem(item));
     const [year, month] = state.month.split('-').map(Number);
@@ -66,7 +67,11 @@
       const cells = core.monthCells(state.month, group.items).map((cell, index) => {
         if (!cell) return '<div class="day empty" aria-hidden="true"></div>';
         const tag = cell.items.length ? 'button' : 'div', count = cell.items.length;
-        const content = count > 1 ? `<span class="cell-event multiple"><span class="cell-time">予定${count}件</span><span class="cell-place">タップで確認</span></span>` : cell.items.map(item => `<span class="cell-event${item.kind === 'event' ? ' event' : ''}${item.cancelled ? ' cancelled' : ''}">${item.kind === 'event' ? `<span class="cell-event-name">${esc(item.shortTitle || item.title)}</span><span class="cell-time">${esc(core.calendarTime(item))}</span>` : `<span class="cell-time">${esc(core.calendarTime(item))}</span><span class="cell-place">${esc(item.place)}</span>`}</span>`).join('');
+        const content = count > 1 ? `<span class="cell-event multiple"><span class="cell-time">予定${count}件</span><span class="cell-place">タップで確認</span></span>` : cell.items.map(item => {
+          const time = item.kind === 'event' ? String(item.start).replace(/^0(\d):/, '$1:') + '〜' : core.calendarTime(item);
+          const timeLabel = `<span class="cell-time" style="--label-units:${labelWidth(time)}">${esc(time)}</span>`;
+          return `<span class="cell-event${item.kind === 'event' ? ' event' : ''}${item.cancelled ? ' cancelled' : ''}">${item.kind === 'event' ? `<span class="cell-event-name">${esc(item.shortTitle || item.title)}</span>${timeLabel}` : `${timeLabel}<span class="cell-place" style="--label-units:${labelWidth(item.place)}">${esc(item.place)}</span>`}</span>`;
+        }).join('');
         const label = `${month}月${cell.day}日 ${cell.items.map(item => item.title + ' ' + item.start + '〜' + item.end + ' ' + item.place).join('、')}`;
         return `<${tag} ${count ? `type="button" data-day="${cell.date}" data-calendar="${group.id}" aria-label="${esc(label)}" aria-expanded="${state.selectedDate === cell.date}" aria-controls="event-list"` : ''} class="day${index % 7 === 0 ? ' sunday' : ''}${cell.date === today ? ' today' : ''}${cell.date === state.selectedDate ? ' selected' : ''}" data-date="${cell.date}" data-count="${count}"><span class="day-number">${cell.day}</span><span class="day-events">${content}</span></${tag}>`;
       }).join('');
