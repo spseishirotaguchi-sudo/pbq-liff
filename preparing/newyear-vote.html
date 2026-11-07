@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#f7f5f0">
+<title>新年会の日程投票｜p.b.q</title>
+<style>
+@font-face{font-family:Courgette;src:url('../assets/fonts/Courgette-Regular.ttf') format('truetype');font-display:swap}
+:root{color-scheme:light;--paper:#f7f5f0;--white:#fff;--ink:#242424;--sub:#625c59;--red:#b81235;--line:#d6d2cc;--tint:#fff1f3;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;color:var(--ink);background:var(--paper);line-height:1.65;-webkit-text-size-adjust:100%}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:default}[hidden]{display:none!important}
+main{max-width:480px;margin:auto;padding:22px 18px max(30px,env(safe-area-inset-bottom))}
+.brand-row{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:14px;gap:10px}
+.brand{font:32px/1.1 Courgette,Georgia,serif}.test{font-size:12px;font-weight:700;color:#735062;background:#f3e4e9;padding:4px 10px;border-radius:5px}
+h1{font-size:27px;line-height:1.35;margin:22px 0 8px;letter-spacing:-.035em}p{margin:0 0 12px}.intro{font-size:15px}.limit{font-size:13px;color:var(--sub);margin-top:6px}
+fieldset{min-width:0;border:0;margin:22px 0 12px;padding:0}legend{padding:0;font-size:15px;font-weight:700;margin-bottom:9px}.times{font-weight:600;color:var(--red);margin-left:8px}
+.choice{display:flex;align-items:center;gap:11px;min-height:54px;padding:10px 13px;margin-bottom:7px;border:1px solid var(--line);border-radius:7px;background:var(--white);cursor:pointer}
+.choice:has(input:checked){border-color:var(--red);background:var(--tint)}.choice input{accent-color:var(--red);margin:0;width:21px;height:21px;flex:none}
+.choice .date{font-size:20px;font-weight:750;font-variant-numeric:tabular-nums;line-height:1.15}.choice .dow{font-size:14px;margin-left:3px}.choice .time{margin-left:auto;color:var(--sub);font-size:14px;font-variant-numeric:tabular-nums}.choice.none{margin-top:12px;font-size:15px}
+.actions{margin-top:12px}.selection{font-size:13px;color:var(--sub);margin:0 0 7px}.primary,.secondary{width:100%;min-height:48px;border-radius:6px;font-size:16px;font-weight:700;padding:9px 13px}
+.primary{background:var(--red);color:white;border:1px solid var(--red)}.primary:disabled{background:#e4e0dd;border-color:#e4e0dd;color:#67615e}.secondary{background:white;border:1px solid var(--red);color:var(--red)}
+.note{font-size:13px;color:var(--sub);margin:16px 0 0}.test-note{font-size:12px;color:var(--sub);border-top:1px solid var(--line);margin:20px 0 0;padding-top:12px}
+.confirmation{background:white;border:1px solid var(--line);border-radius:8px;margin-top:20px;padding:18px}.confirmation h2{font-size:20px;line-height:1.4;margin:0 0 12px}.confirmation ul{padding-left:1.3em;margin:8px 0 16px}.confirmation li{margin:4px 0}.reset{background:none;border:0;color:var(--sub);text-decoration:underline;padding:8px 0;min-height:42px;font-size:13px}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+</style>
+<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script defer src="../assets/newyear-vote-20261107.js"></script>
+</head>
+<body>
+<main>
+  <header class="brand-row"><span class="brand">p.b.q</span></header>
+  <h1>新年会の日程投票</h1>
+  <p class="intro">参加できる日をすべて選んでください。<br>現時点の予定でOKです！</p>
+  <p class="limit">回答期限：11/15(日) 23:59</p>
+  <p id="status" class="limit" role="status">投票を読み込んでいます…</p>
+  <button class="secondary" id="retry" type="button" hidden>もう一度読み込む</button>
+  <form id="vote" autocomplete="off" hidden>
+    <fieldset>
+      <legend>2027年1月の候補日<span class="times">すべて20:00開始</span></legend>
+      <label class="choice"><input type="checkbox" name="day" value="2027-01-22" aria-label="1月22日 金曜日 20時"><span><span class="date">1/22</span><span class="dow">(金)</span></span><span class="time">20:00〜</span></label>
+      <label class="choice"><input type="checkbox" name="day" value="2027-01-23" aria-label="1月23日 土曜日 20時"><span><span class="date">1/23</span><span class="dow">(土)</span></span><span class="time">20:00〜</span></label>
+      <label class="choice"><input type="checkbox" name="day" value="2027-01-29" aria-label="1月29日 金曜日 20時"><span><span class="date">1/29</span><span class="dow">(金)</span></span><span class="time">20:00〜</span></label>
+      <label class="choice"><input type="checkbox" name="day" value="2027-01-30" aria-label="1月30日 土曜日 20時"><span><span class="date">1/30</span><span class="dow">(土)</span></span><span class="time">20:00〜</span></label>
+      <label class="choice none"><input type="checkbox" id="none" name="day" value="none">どの日も参加できない</label>
+    </fieldset>
+    <div class="actions">
+      <p id="selection" class="selection" aria-live="polite">0日選択中</p>
+      <button class="primary" id="submit" type="submit" disabled>回答を送信</button>
+    </div>
+  </form>
+  <section class="confirmation" id="confirmation" hidden aria-labelledby="complete-heading">
+    <h2 id="complete-heading" tabindex="-1">ご回答ありがとうございます！</h2>
+    <p>回答した日程</p>
+    <ul id="selected-days"></ul>
+    <button class="secondary" id="change" type="button">回答を変更する</button>
+  </section>
+  <p class="note">今回は日程調整の投票です。正式な参加申し込みは、日程が決まってからご案内します。</p>
+  <noscript><p>投票画面を試すにはJavaScriptを有効にしてください。</p></noscript>
+</main>
+</body>
+</html>
