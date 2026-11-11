@@ -1,6 +1,6 @@
 /* ログイン不要・活動スケジュール。予約・会員区分・LINE配信は変更しない。 */
 var ACTIVITY_SCHEDULE_VERSION = 'schedule-square-20261018';
-var ACTIVITY_SCHEDULE_PERFORMANCE = 'schedule-fast-open-20261018';
+var ACTIVITY_SCHEDULE_PERFORMANCE = 'schedule-event-defaults-20261112';
 var ACTIVITY_SCHEDULE_TTL = 600;
 var ACTIVITY_EVENT_HEADERS = ['掲載','イベント名','種別','開催日','開始時刻','終了時刻','会場','受付状態','申込URL','募集締切日時','受付開始日時','紹介・詳細','住所','地図URL','終了日（複数日）','イベントID'];
 
@@ -80,7 +80,7 @@ function scheduleBuild_(month,book) {
   });
   scheduleEventRows_(eSheet).forEach(function(r,i){
     if(!scheduleTrue_(r[0]))return;
-    var date=scheduleDay_(r[3]),endDay=r[14]?scheduleDay_(r[14]):'',range=scheduleRange_(date,r[4],r[5],endDay),status=scheduleText_(r[7]),title=scheduleText_(r[1]),place=scheduleText_(r[6]),id=scheduleText_(r[15]);
+    var date=scheduleDay_(r[3]),endDay=r[14]?scheduleDay_(r[14]):'',range=scheduleRange_(date,r[4],r[5],endDay),status=scheduleText_(r[7]) || '申込受付前',title=scheduleText_(r[1]),place=scheduleText_(r[6]) || '会場調整中',id=scheduleText_(r[15]);
     var closes=scheduleDeadline_(r[9]),opens=scheduleDeadline_(r[10]);
     if(!range || (r[14]&&!endDay) || !title || !place || !id || seen[id] || ['申込受付前','申込受付中','募集締切済','満員','開催中止'].indexOf(status)<0 || closes===null || opens===null || (opens&&closes&&opens>closes)) {issues.push({sheet:'イベント',row:i+2,reason:'invalid_or_duplicate'});return;}seen[id]=true;
     if(month && !scheduleInMonth_(range,month))return;

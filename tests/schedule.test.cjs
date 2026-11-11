@@ -62,7 +62,7 @@ test('二重起動でも予定キャッシュ用トリガーを追加しすぎ�
 
 test('ログイン・トークン・会員名簿なしで掲載済み予定を返し、LINE検証APIを呼ばない',()=>{
  const h=harness();h.rows.people.length=0;h.setHttp(503);const d=h.request({idToken:''});assert.equal(d.ok,true);assert.equal(d.items.length,2);assert.equal(h.calls(),0);assert.equal(h.reads.people,undefined);
- assert.ok(!JSON.stringify(d).includes('Ugood'));assert.ok(!JSON.stringify(d).includes('token'));assert.equal(d.performanceVersion,'schedule-fast-open-20261018');
+ assert.ok(!JSON.stringify(d).includes('Ugood'));assert.ok(!JSON.stringify(d).includes('token'));assert.equal(d.performanceVersion,'schedule-event-defaults-20261112');
 });
 test('予定の匿名閲覧を許可しても、非掲載行や投票・会員のデータは返さない',()=>{
  const h=harness();h.rows.practices[1][9]=false;const d=h.request();assert.equal(d.items.length,1);assert.equal(d.items[0].id,'practice-1105pm');assert.ok(!('capacity' in d.items[0]));assert.ok(!('tier' in d.items[0]));
@@ -83,4 +83,39 @@ test('端末保存が禁止・破損・古い形式でも、通常の予定取�
 test('事前準備は古くなったキャッシュだけを更新し、閲覧リクエストの再読取を省く',()=>{
  const h=harness();h.request();h.ctx.warmActivityScheduleCache();assert.equal(h.reads.practices,1);
  let data=JSON.parse(h.cache.get('schedule_data_v1'));data.builtAt=Date.now()-250000;h.cache.set('schedule_data_v1',JSON.stringify(data));h.ctx.warmActivityScheduleCache();assert.equal(h.reads.practices,2);assert.equal(h.request().timing.cacheHit,true);
+});
+
+test('会場と受付状態が未入力でも日時の決まったイベントを掲載できる',()=>{
+ for(const [place,status] of [['',''],['会場',''],['','申込受付中']]){
+  const h=harness();
+  h.rows.イベント.push([true,'新年会','交流イベント','2027/1/23',20/24,22/24,place,status,'','','','','','','','']);
+  const result=h.request({month:'2027-01'});
+  assert.equal(result.warningCount,0);
+  assert.equal(result.items.length,1);
+  const event=result.items[0];
+  assert.equal(event.title,'新年会');
+  assert.equal(event.date,'2027-01-23');
+  assert.equal(event.start,'20:00');
+  assert.equal(event.end,'22:00');
+  assert.equal(event.place,place || '会場調整中');
+  assert.equal(event.status,status || '申込受付前');
+  assert.equal(event.canApply,false);
+ }
+});
+test('未入力を補完しても非掲載の指定と不正な日時・状態を尊重する',()=>{
+ const h=harness();
+ const event=[true,'新年会','交流イベント','2027/1/23',20/24,22/24,'','','','','','','','','','stable'];
+ h.rows.イベント.push(event);
+ h.rows.イベント[1][0]=false;
+ assert.equal(h.request({month:'2027-01'}).items.length,0);
+ h.rows.イベント[1][0]=true;
+ for(const [column,value] of [[4,'25:00'],[7,'unknown']]){
+  const original=h.rows.イベント[1][column];
+  h.rows.イベント[1][column]=value;
+  h.edit('イベント');
+  const result=h.request({month:'2027-01'});
+  assert.equal(result.items.length,0);
+  assert.equal(result.warningCount,1);
+  h.rows.イベント[1][column]=original;
+ }
 });
