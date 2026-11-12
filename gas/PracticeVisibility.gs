@@ -1,20 +1,19 @@
-/** 過去日の投票表示を5分ごとに閉じる。日付の判定は日本時間。 */
+/** 過去日の投票表示を毎日0時台に閉じる。日付の判定は日本時間。 */
 function installPastPracticeVisibility() {
   var handler = 'hidePastPractices';
   var triggers = ScriptApp.getProjectTriggers().filter(function(trigger) {
     return trigger.getHandlerFunction() === handler;
   });
-  if (!triggers.length) {
-    ScriptApp.newTrigger(handler).timeBased().everyMinutes(5).create();
-  }
+  ScriptApp.newTrigger(handler).timeBased().atHour(0).everyDays(1).inTimezone('Asia/Tokyo').create();
+  triggers.forEach(function(trigger) { ScriptApp.deleteTrigger(trigger); });
   var result = hidePastPractices();
-  console.log(JSON.stringify({event:'past_practice_visibility_installed',intervalMinutes:5,result:result}));
+  console.log(JSON.stringify({event:'past_practice_visibility_installed',intervalDays:1,hour:0,timeZone:'Asia/Tokyo',result:result}));
   return result;
 }
 
 function hidePastPractices() {
   var lock = LockService.getScriptLock();
-  if (!lock.tryLock(1000)) return {status:'busy'};
+  if (!lock.tryLock(30000)) throw new Error('他の更新処理が続いているため、過去日の表示切替を完了できませんでした。');
   try {
     var sheet = ss_().getSheetByName(SHEET_PRACTICES);
     if (!sheet) throw new Error('practicesタブが見つかりません。');

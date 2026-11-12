@@ -43,11 +43,14 @@ function harness(input, today = '2026-11-12') {
       newTrigger:handler => {
         const builder = {
           timeBased:() => builder,
-          everyMinutes:minutes => { assert.equal(minutes,5); return builder; },
+          atHour:hour => { assert.equal(hour,0); return builder; },
+          everyDays:days => { assert.equal(days,1); return builder; },
+          inTimezone:zone => { assert.equal(zone,'Asia/Tokyo'); return builder; },
           create:() => triggers.push({getHandlerFunction:() => handler}),
         };
         return builder;
       },
+      deleteTrigger:trigger => { triggers.splice(triggers.indexOf(trigger),1); },
     },
   });
   vm.runInContext(schedule,context);
@@ -86,18 +89,19 @@ test('日本時間で日付が変わったら前日を閉じ、年越しも開�
   assert.equal(h.rows[2][5],true);
 });
 
-test('不正な開催日は報告し、同時実行中は次回へ回す', () => {
+test('不正な開催日は報告し、更新ロックを取得できない場合は失敗を知らせる', () => {
   const h = harness([row('bad','2/30',true,2026)]);
   assert.equal(h.context.hidePastPractices().invalidDateIds[0],'bad');
   assert.deepEqual(h.writes,[]);
   h.unavailable();
-  assert.equal(h.context.hidePastPractices().status,'busy');
+  assert.throws(() => h.context.hidePastPractices(),/完了できませんでした/);
   assert.equal(h.isLocked(),false);
 });
 
-test('同じ設定処理を繰り返しても定期処理を重複登録しない', () => {
+test('既存の定期処理を毎日0時台へ置き換え、繰り返しても重複させない', () => {
   const h = harness([]);
   h.triggers.push({getHandlerFunction:() => 'existing'});
+  h.triggers.push({getHandlerFunction:() => 'hidePastPractices'});
   h.context.installPastPracticeVisibility();
   h.context.installPastPracticeVisibility();
   assert.deepEqual(h.triggers.map(trigger => trigger.getHandlerFunction()),['existing','hidePastPractices']);
