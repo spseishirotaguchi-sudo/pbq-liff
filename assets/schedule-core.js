@@ -19,11 +19,10 @@
     const groups = [
       { id: 'morning', title: '朝の部', items: [] },
       { id: 'night', title: '夜の部', items: [] },
-      { id: 'other', title: 'その他の練習', items: [] },
-      { id: 'events', title: 'イベント', items: [] }
+      { id: 'other', title: 'その他の練習', items: [] }
     ];
     for (const item of items) {
-      const index = item.kind === 'event' ? 3 : item.title === '朝の部' ? 0 : item.title === '夜の部' ? 1 : 2;
+      const index = item.kind === 'event' || item.title === '夜の部' ? 1 : item.title === '朝の部' ? 0 : 2;
       groups[index].items.push(item);
     }
     return groups.filter((group, index) => index < 2 || group.items.length);

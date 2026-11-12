@@ -14,7 +14,10 @@
 .calendar-boards .day.today .day-number{text-decoration:underline;text-underline-offset:2px}
 .calendar-boards .day-events{display:flex;flex:1;min-width:0;min-height:0;flex-direction:column;justify-content:flex-end}
 .calendar-boards .cell-event{display:flex;flex:none;min-width:0;min-height:0;flex-direction:column;align-items:center;justify-content:center;gap:clamp(1px,.25cqi,2px);padding:clamp(1px,.45cqi,4px) 0;background:var(--calendar-red);color:#fff;border-radius:clamp(2px,.5cqi,4px);text-align:center}
-.calendar-boards .cell-event.cancelled{background:#69645f;text-decoration:line-through}
+.calendar-boards .cell-event.event{background:#7bc8e8;color:#143b50;min-height:clamp(18px,6.5cqi,40px)}
+.calendar-boards .day[data-count="2"] .day-events{gap:clamp(1px,.3cqi,2px)}
+.calendar-boards .day[data-count="2"] .cell-event{flex:1;min-height:0;padding:1px 0}
+.calendar-boards .cell-event.cancelled{background:#69645f;color:#fff;text-decoration:line-through}
 .calendar-boards .cell-time{display:block;max-width:100%;font-size:min(clamp(8px,2.75cqi,17px),calc((100cqi / 7 - 1.6cqi) / var(--label-units,5)));font-weight:700;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums}
 .calendar-boards .cell-place,.calendar-boards .cell-event-name{display:block;max-width:100%;font-size:min(clamp(7px,2.45cqi,15px),calc((100cqi / 7 - 1.6cqi) / var(--label-units,5)));font-weight:650;line-height:1.05;white-space:nowrap}
 .calendar-boards .cell-event-name{overflow:hidden;text-overflow:ellipsis}

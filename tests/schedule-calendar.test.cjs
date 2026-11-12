@@ -18,14 +18,23 @@ test('朝夜は時間で推測せず、元の部名で分け、同日も両方�
   assert.equal(core.monthCells('2026-11', groups[1].items).find(x => x?.day === 5).items.length, 1);
 });
 
-test('イベント・中止表示・未知の部も削除せず、元のオブジェクトを保持する', () => {
+test('イベントは夜の部にまとめ、中止表示・未知の部も元のオブジェクトを保持する', () => {
   const other = practice('other', '特別練習', '13:00');
   const event = { ...practice('event', '親睦会', '19:30'), kind: 'event', cancelled: true };
   const groups = core.calendarGroups([other, event]);
-  assert.deepEqual(groups.map(g => g.title), ['朝の部', '夜の部', 'その他の練習', 'イベント']);
+  assert.deepEqual(groups.map(g => g.title), ['朝の部', '夜の部', 'その他の練習']);
   assert.equal(groups[2].items[0], other);
-  assert.equal(groups[3].items[0], event);
+  assert.equal(groups[1].items[0], event);
   assert.deepEqual(core.calendarGroups([]).map(g => g.items.length), [0, 0]);
+});
+
+test('同日に夜練とイベントがあっても両方を夜の部の同じ日付に残す', () => {
+  const night = practice('night', '夜の部', '20:00');
+  const event = { ...practice('event', '新年会', '20:00'), kind: 'event' };
+  const groups = core.calendarGroups([night, event]);
+  assert.deepEqual(groups.map(group => group.title), ['朝の部', '夜の部']);
+  const day = core.monthCells('2026-11', groups[1].items).find(cell => cell?.day === 5);
+  assert.deepEqual(day.items, [night, event]);
 });
 
 test('時間帯は開始と終了を両方表示し、00分だけ省略する', () => {
